@@ -1,12 +1,13 @@
 window : Window_Type;
-window_width  := 1024;
-window_height := 768;
+window_width  := 1600;
+window_height := 900;
 window_colour := Vector4.{.1, .1, .1, 1};
 ui_scale := 1.0;
 font : *Simp.Dynamic_Font;
-font_default_height :: 24;
+font_default_height :: 20;
 font_height := 0; // set programmatically when changing scale
 font_width  := 0; // set programmatically when changing scale
+active_fragment := 0;
 fragments : [..]Fragment;
 
 main :: ()
@@ -28,14 +29,15 @@ main :: ()
 
     {
         f := array_add(*fragments);
-        f.center = .{300, 500};
-        add_text(f, "number := 69;");
-        add_text(f, "test   := 420;");
-        add_text(f, "nice   := true;");
+        f.center = .{700, 500};
+        add_text(f, "adjust_frag_index :: (delta: s64)");
+        add_text(f, "{");
+        add_text(f, "    active_fragment = (active_fragment + delta + fragments.count) % fragments.count;");
+        add_text(f, "}");
     }
     {
         f := array_add(*fragments);
-        f.center = .{400, 200};
+        f.center = .{550, 200};
         add_text(f, "colour :: Vector4.{1, 1, 1, 1};");
     }
 
@@ -59,10 +61,14 @@ main :: ()
 
             if it.type == {
               case .KEYBOARD;
-                if it.key_pressed && it.key_code == .ESCAPE    quit = true;
+                if it.key_pressed && it.key_code == .ESCAPE quit = true;
+                
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "+" adjust_scale(+1);
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "-" adjust_scale(-1);
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "0" set_scale(1);
+
+                if it.key_pressed && it.ctrl_pressed && it.key_code == .ARROW_LEFT  adjust_frag_index(+1);
+                if it.key_pressed && it.ctrl_pressed && it.key_code == .ARROW_RIGHT adjust_frag_index(-1);
             }
         }
 
@@ -70,6 +76,11 @@ main :: ()
         sleep_milliseconds(10);
         reset_temporary_storage();
     }
+}
+
+adjust_frag_index :: (delta: s64)
+{
+    active_fragment = (active_fragment + delta + fragments.count) % fragments.count;
 }
 
 adjust_scale :: (delta: s64)
@@ -119,8 +130,12 @@ draw_one_frame :: () {
     Simp.set_shader_for_color();
 
     // @TODO: why does this need doing in 2 passes?
-    for frag: fragments
+    for frag, frag_index: fragments
     {
+        if frag_index == active_fragment
+        {
+            Simp.immediate_quad(frag.bot_left.x-1, frag.bot_left.y-1, frag.top_right.x+1, frag.top_right.y+1, .{1,1,1,1});
+        }
         Simp.immediate_quad(frag.bot_left.x, frag.bot_left.y, frag.top_right.x, frag.top_right.y, frag.colour);
     }
     for frag: fragments
