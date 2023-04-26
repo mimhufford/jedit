@@ -69,6 +69,8 @@ main :: ()
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "-" adjust_scale(-1);
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "0" set_scale(1);
 
+                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "S" save_as_jai_file();
+
                 if it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT
                 {
                     active_fragment = -1;
@@ -102,6 +104,27 @@ main :: ()
         sleep_milliseconds(10);
         reset_temporary_storage();
     }
+}
+
+save_as_jai_file :: ()
+{
+    sb : String_Builder;
+
+    for frag: fragments
+    {
+        for line: frag.text
+        {
+            append(*sb, line);
+            append(*sb, "\n");
+        }
+
+        append(*sb, "\n");
+    }
+
+    contents := builder_to_string(*sb);
+    contents.count -= 2; // remove the last two new lines
+
+    write_entire_file("test.jai", contents);
 }
 
 adjust_frag_index :: (delta: s64)
@@ -190,6 +213,7 @@ load_font :: ()
 }
 
 #import "Math";
+#import "File";
 #import "Basic";
 #import "System";  // For get_path_of_running_executable. @Cleanup.
 #import "String";  // For path_strip_filename. @Cleanup.
