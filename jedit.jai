@@ -8,6 +8,7 @@ font : *Simp.Dynamic_Font;
 font_default_height :: 20;
 font_height := 0; // set programmatically when changing scale
 font_width  := 0; // set programmatically when changing scale
+active_fragment_click_offset : Vector2; // used when dragging a fragment around to avoid snapping to its center
 active_fragment := -1;
 fragments : [..]Fragment;
 
@@ -83,6 +84,8 @@ main :: ()
                         if y < cast(int) it.bot_left.y continue;
                         if y > cast(int) it.top_right.y continue;
                         active_fragment = it_index;
+                        active_fragment_click_offset.x = it.center.x - x;
+                        active_fragment_click_offset.y = it.center.y - y;
                     }
                 }
                 if !it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT left_click_down = false;
@@ -92,8 +95,8 @@ main :: ()
         if left_click_down && active_fragment >= 0
         {
             x, y := get_mouse_pointer_position(window, true);
-            fragments[active_fragment].center.x = x / ui_scale;
-            fragments[active_fragment].center.y = y / ui_scale;
+            fragments[active_fragment].center.x = active_fragment_click_offset.x + x / ui_scale;
+            fragments[active_fragment].center.y = active_fragment_click_offset.y + y / ui_scale;
             recalculate(*fragments[active_fragment]);
         }
 
