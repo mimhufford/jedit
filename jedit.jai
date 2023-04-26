@@ -74,8 +74,6 @@ main :: ()
                     active_fragment = -1;
 
                     x, y := get_mouse_pointer_position(window, true);
-                    x = xx (x / ui_scale);
-                    y = xx (y / ui_scale);
                     left_click_down = true;
                     for fragments
                     {
@@ -84,8 +82,8 @@ main :: ()
                         if y < cast(int) it.bot_left.y continue;
                         if y > cast(int) it.top_right.y continue;
                         active_fragment = it_index;
-                        active_fragment_click_offset.x = it.center.x - x;
-                        active_fragment_click_offset.y = it.center.y - y;
+                        active_fragment_click_offset.x = it.center.x - (x / ui_scale);
+                        active_fragment_click_offset.y = it.center.y - (y / ui_scale);
                     }
                 }
                 if !it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT left_click_down = false;
