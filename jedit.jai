@@ -3,6 +3,7 @@ window_width  := 1600;
 window_height := 900;
 window_colour := Vector4.{.1, .1, .1, 1};
 ui_scale := 1.0;
+ui_offset : Vector2;
 left_click_down := false;
 font : *Simp.Dynamic_Font;
 font_default_height :: 20;
@@ -69,6 +70,11 @@ main :: ()
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "-" adjust_scale(-1);
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "0" set_scale(1);
 
+                if it.key_pressed && it.key_code == .ARROW_LEFT  ui_offset.x += 25;
+                if it.key_pressed && it.key_code == .ARROW_RIGHT ui_offset.x -= 25;
+                if it.key_pressed && it.key_code == .ARROW_UP    ui_offset.y -= 25;
+                if it.key_pressed && it.key_code == .ARROW_DOWN  ui_offset.y += 25;
+
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "S" save_as_jai_file();
 
                 if it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT
@@ -76,6 +82,8 @@ main :: ()
                     active_fragment = -1;
 
                     x, y := get_mouse_pointer_position(window, true);
+                    x = xx (x - ui_offset.x);
+                    y = xx (y - ui_offset.y);
                     left_click_down = true;
                     for fragments
                     {
@@ -95,6 +103,8 @@ main :: ()
         if left_click_down && active_fragment >= 0
         {
             x, y := get_mouse_pointer_position(window, true);
+            x = xx (x - ui_offset.x);
+            y = xx (y - ui_offset.y);
             fragments[active_fragment].center.x = active_fragment_click_offset.x + x / ui_scale;
             fragments[active_fragment].center.y = active_fragment_click_offset.y + y / ui_scale;
             recalculate(*fragments[active_fragment]);
@@ -134,7 +144,8 @@ adjust_frag_index :: (delta: s64)
 
 adjust_scale :: (delta: s64)
 {
-    if ui_scale <= 0.1 return;
+    if delta < 0 && ui_scale <= 0.3 return;
+    if delta > 0 && ui_scale >= 10  return;
     if delta > 0 set_scale(ui_scale / 0.95);
     if delta < 0 set_scale(ui_scale * 0.95);
 }
@@ -181,18 +192,21 @@ draw_one_frame :: () {
     // @TODO: why does this need doing in 2 passes?
     for frag, frag_index: fragments
     {
+        bl := frag.bot_left;   bl += ui_offset;
+        tr := frag.top_right;  tr += ui_offset;
+
         if frag_index == active_fragment
         {
-            Simp.immediate_quad(frag.bot_left.x-1, frag.bot_left.y-1, frag.top_right.x+1, frag.top_right.y+1, .{1,1,1,1});
+            Simp.immediate_quad(bl.x-1, bl.y-1, tr.x+1, tr.y+1, .{1,1,1,1});
         }
-        Simp.immediate_quad(frag.bot_left.x, frag.bot_left.y, frag.top_right.x, frag.top_right.y, frag.colour);
+        Simp.immediate_quad(bl.x, bl.y, tr.x, tr.y, frag.colour);
     }
     for frag: fragments
     {
         for text, line: frag.text
         {
-            text_x := frag.bot_left.x + font_width;
-            text_y := frag.top_right.y - ((line + 1) * font_height) - font_height * 0.25;
+            text_x := frag.bot_left.x + font_width + ui_offset.x;
+            text_y := frag.top_right.y - ((line + 1) * font_height) - font_height * 0.25 + ui_offset.y;
             Simp.draw_text(font, xx text_x, xx text_y, text);
         }
     }
