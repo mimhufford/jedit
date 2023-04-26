@@ -3,6 +3,7 @@ window_width  := 1600;
 window_height := 900;
 window_colour := Vector4.{.1, .1, .1, 1};
 ui_scale := 1.0;
+left_click_down := false;
 font : *Simp.Dynamic_Font;
 font_default_height :: 20;
 font_height := 0; // set programmatically when changing scale
@@ -69,7 +70,17 @@ main :: ()
 
                 if it.key_pressed && it.ctrl_pressed && it.key_code == .ARROW_LEFT  adjust_frag_index(+1);
                 if it.key_pressed && it.ctrl_pressed && it.key_code == .ARROW_RIGHT adjust_frag_index(-1);
+
+                if  it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT left_click_down = true;
+                if !it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT left_click_down = false;
             }
+        }
+
+        if left_click_down
+        {
+            fragments[active_fragment].center.x += Input.mouse_delta_x / ui_scale;
+            fragments[active_fragment].center.y -= Input.mouse_delta_y / ui_scale;
+            recalculate(*fragments[active_fragment]);
         }
 
         draw_one_frame();
