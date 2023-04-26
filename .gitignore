@@ -2,3 +2,5 @@
 *.pdb
 *.exe
 *.ttf
+*.code-workspace
+.vscode/tasks.json

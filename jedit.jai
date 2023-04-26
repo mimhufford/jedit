@@ -4,7 +4,9 @@ window_height := 900;
 window_colour := Vector4.{.1, .1, .1, 1};
 ui_scale := 1.0;
 ui_offset : Vector2;
+ui_offset_drag_start_pos : Vector2;
 left_click_down := false;
+left_click_down_start_pos : Vector2;
 font : *Simp.Dynamic_Font;
 font_default_height :: 20;
 font_height := 0; // set programmatically when changing scale
@@ -70,18 +72,16 @@ main :: ()
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "-" adjust_scale(-1);
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "0" set_scale(1);
 
-                if it.key_pressed && it.key_code == .ARROW_LEFT  ui_offset.x += 25;
-                if it.key_pressed && it.key_code == .ARROW_RIGHT ui_offset.x -= 25;
-                if it.key_pressed && it.key_code == .ARROW_UP    ui_offset.y -= 25;
-                if it.key_pressed && it.key_code == .ARROW_DOWN  ui_offset.y += 25;
-
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "S" save_as_jai_file();
 
                 if it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT
                 {
                     active_fragment = -1;
+                    ui_offset_drag_start_pos = ui_offset;
 
                     x, y := get_mouse_pointer_position(window, true);
+                    left_click_down_start_pos.x = xx x;
+                    left_click_down_start_pos.y = xx y;
                     x = xx (x - ui_offset.x);
                     y = xx (y - ui_offset.y);
                     left_click_down = true;
@@ -100,15 +100,24 @@ main :: ()
             }
         }
 
-        if left_click_down && active_fragment >= 0
+        if left_click_down
         {
-            x, y := get_mouse_pointer_position(window, true);
-            x = xx (x - ui_offset.x);
-            y = xx (y - ui_offset.y);
-            fragments[active_fragment].center.x = active_fragment_click_offset.x + x / ui_scale;
-            fragments[active_fragment].center.y = active_fragment_click_offset.y + y / ui_scale;
-            recalculate(*fragments[active_fragment]);
-        }
+            if active_fragment >= 0
+            {
+                x, y := get_mouse_pointer_position(window, true);
+                x = xx (x - ui_offset.x);
+                y = xx (y - ui_offset.y);
+                fragments[active_fragment].center.x = active_fragment_click_offset.x + x / ui_scale;
+                fragments[active_fragment].center.y = active_fragment_click_offset.y + y / ui_scale;
+                recalculate(*fragments[active_fragment]);
+            }
+            else
+            {
+                x, y := get_mouse_pointer_position(window, true);
+                ui_offset.x = ui_offset_drag_start_pos.x + x - left_click_down_start_pos.x;
+                ui_offset.y = ui_offset_drag_start_pos.y + y - left_click_down_start_pos.y;
+            }
+        } 
 
         draw_one_frame();
         sleep_milliseconds(10);
