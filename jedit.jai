@@ -8,7 +8,7 @@ font : *Simp.Dynamic_Font;
 font_default_height :: 20;
 font_height := 0; // set programmatically when changing scale
 font_width  := 0; // set programmatically when changing scale
-active_fragment := 0;
+active_fragment := -1;
 fragments : [..]Fragment;
 
 main :: ()
@@ -68,18 +68,32 @@ main :: ()
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "-" adjust_scale(-1);
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "0" set_scale(1);
 
-                if it.key_pressed && it.ctrl_pressed && it.key_code == .ARROW_LEFT  adjust_frag_index(+1);
-                if it.key_pressed && it.ctrl_pressed && it.key_code == .ARROW_RIGHT adjust_frag_index(-1);
+                if it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT
+                {
+                    active_fragment = -1;
 
-                if  it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT left_click_down = true;
+                    x, y := get_mouse_pointer_position(window, true);
+                    x = xx (x / ui_scale);
+                    y = xx (y / ui_scale);
+                    left_click_down = true;
+                    for fragments
+                    {
+                        if x < cast(int) it.bot_left.x continue;
+                        if x > cast(int) it.top_right.x continue;
+                        if y < cast(int) it.bot_left.y continue;
+                        if y > cast(int) it.top_right.y continue;
+                        active_fragment = it_index;
+                    }
+                }
                 if !it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT left_click_down = false;
             }
         }
 
-        if left_click_down
+        if left_click_down && active_fragment >= 0
         {
-            fragments[active_fragment].center.x += Input.mouse_delta_x / ui_scale;
-            fragments[active_fragment].center.y -= Input.mouse_delta_y / ui_scale;
+            x, y := get_mouse_pointer_position(window, true);
+            fragments[active_fragment].center.x = x / ui_scale;
+            fragments[active_fragment].center.y = y / ui_scale;
             recalculate(*fragments[active_fragment]);
         }
 
