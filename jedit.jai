@@ -2,10 +2,11 @@ window : Window_Type;
 window_width  := 1024;
 window_height := 768;
 window_colour := Vector4.{.1, .1, .1, 1};
+ui_scale := 1.0;
 font : *Simp.Dynamic_Font;
 font_default_height :: 24;
-font_height := font_default_height;
-font_width  := 00; // set programmatically when loading the font
+font_height := 0; // set programmatically when changing scale
+font_width  := 0; // set programmatically when changing scale
 fragments : [..]Fragment;
 
 main :: ()
@@ -21,7 +22,8 @@ main :: ()
     window_width, window_height = Simp.get_render_dimensions(window);
 
     Simp.set_render_target(window);
-    
+
+    set_scale(1);
     load_font();
 
     {
@@ -36,7 +38,7 @@ main :: ()
         f.center = .{400, 200};
         add_text(f, "colour :: Vector4.{1, 1, 1, 1};");
     }
-    
+
     quit := false;
     while !quit {
         Input.update_window_events();
@@ -44,7 +46,7 @@ main :: ()
         for Input.get_window_resizes()
         {
             Simp.update_window(it.window);
-            
+
             if it.window != window continue;
             if it.width == window_width && it.height == window_height continue;
 
@@ -58,9 +60,9 @@ main :: ()
             if it.type == {
               case .KEYBOARD;
                 if it.key_pressed && it.key_code == .ESCAPE    quit = true;
-                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "+" adjust_font(+1);
-                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "-" adjust_font(-1);
-                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "0" set_font_size(font_default_height);
+                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "+" adjust_scale(+1);
+                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "-" adjust_scale(-1);
+                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "0" set_scale(1);
             }
         }
 
@@ -70,15 +72,16 @@ main :: ()
     }
 }
 
-adjust_font :: (delta: s64)
+adjust_scale :: (delta: s64)
 {
-    if font_height + delta <= 3 return;
-    set_font_size(font_height + delta);
+    if ui_scale <= 0.1 return;
+    if delta > 0 set_scale(ui_scale / 0.95);
+    if delta < 0 set_scale(ui_scale * 0.95);
 }
 
-set_font_size :: (size: s64)
+set_scale :: (new_scale: float)
 {
-    font_height = size;    
+    ui_scale = new_scale;
     load_font();
     for * fragments recalculate(it);
 }
@@ -88,7 +91,7 @@ Fragment :: struct
     text   : [..]string;
     center : Vector2;
     colour := Vector4.{.2, .2, .2, 1};
-    
+
     // The following variables are calculated and cached based on changes to text and center
     bot_left    : Vector2;
     top_right   : Vector2;
@@ -107,8 +110,8 @@ recalculate :: (fragment: *Fragment)
     bg_half_width  := (text_width / 2.0) + font_width; // a char width padding on left and right
     bg_half_height := ((font_height * fragment.text.count) / 2.0) + (font_height / 2.0); // half a char height padding on top and bottom
     bg_half_dim := Vector2.{xx bg_half_width, xx bg_half_height};
-    fragment.bot_left  = fragment.center - bg_half_dim;
-    fragment.top_right = fragment.center + bg_half_dim;
+    fragment.bot_left  = ui_scale * fragment.center - bg_half_dim;
+    fragment.top_right = ui_scale * fragment.center + bg_half_dim;
 }
 
 draw_one_frame :: () {
@@ -139,6 +142,7 @@ load_font :: ()
 
     path := path_strip_filename(get_path_of_running_executable());
     set_working_directory(path);
+    font_height = xx (font_default_height * ui_scale);
     font = Simp.get_font_at_size(".", "SourceCodePro-Regular.ttf", font_height);
     font_width = Simp.prepare_text(font, "w");
     assert(font != null);
