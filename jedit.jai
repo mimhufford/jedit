@@ -74,6 +74,8 @@ main :: ()
 
                 if it.key_pressed && it.ctrl_pressed && it.key_code == #char "S" save_as_jai_file();
 
+                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "N" new_fragment();
+
                 if it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT
                 {
                     active_fragment = -1;
@@ -123,6 +125,13 @@ main :: ()
         sleep_milliseconds(10);
         reset_temporary_storage();
     }
+}
+
+new_fragment :: ()
+{
+    f := array_add(*fragments);
+    f.center = .{100, 100};
+    add_text(f, copy_string(tprint("frag% :: %;", fragments.count, fragments.count)));
 }
 
 save_as_jai_file :: ()
