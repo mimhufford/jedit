@@ -215,14 +215,21 @@ handle_fragment_input :: (using event: Input.Event)
         frag := *fragments[active_fragment];
         if frag.lines.count == 0 return;
         line := *frag.lines[frag.lines.count - 1];
-        if line.count > 0  line.count -= 1;
-        else               pop(*frag.lines);
+        if line.count > 0            line.count -= 1;
+        else if frag.lines.count > 1 pop(*frag.lines);
         recalculate(frag);
     }
     else if key_pressed && key_code == .ENTER 
     {
         frag := *fragments[active_fragment];
-        fragment_add_line(frag, "// testing adding new lines");
+        fragment_add_line(frag, "");
+    }
+    else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
+    {
+        frag := *fragments[active_fragment];
+        line := *frag.lines[frag.lines.count - 1];
+        array_add(line, cast(u8)utf32);
+        recalculate(frag);
     }
 }
 
