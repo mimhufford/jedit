@@ -164,6 +164,12 @@ handle_command_input :: (using event: Input.Event)
         mode = .CANVAS;
     }
 
+    if key_pressed && key_code == .BACKSPACE
+    {
+        current_buffer := get_current_buffer(*command);
+        if current_buffer.count  current_buffer.count -= 1;
+    }
+
     if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
         // @HACK the shortcut for this is Ctrl+Space which means a leading space is instantly
