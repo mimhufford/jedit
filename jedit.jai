@@ -2,6 +2,8 @@ window : Window_Type;
 window_width  := 1600;
 window_height := 900;
 window_colour := Vector4.{.1, .1, .1, 1};
+window_wants_to_quit := false;
+
 ui_scale := 1.0;
 ui_offset : Vector2;
 ui_offset_drag_start_pos : Vector2;
@@ -14,6 +16,8 @@ font_width  := 0; // set programmatically when changing scale
 active_fragment_click_offset : Vector2; // used when dragging a fragment around to avoid snapping to its center
 active_fragment := -1;
 fragments : [..]Fragment;
+mode : enum { CANVAS; COMMAND; } = .CANVAS;
+command : String_Builder;
 
 main :: ()
 {
@@ -46,85 +50,120 @@ main :: ()
         add_text(f, "colour :: Vector4.{1, 1, 1, 1};");
     }
 
-    quit := false;
-    while !quit {
+    while !window_wants_to_quit
+    {
         Input.update_window_events();
+        handle_window_resize();
 
-        for Input.get_window_resizes()
+        for Input.events_this_frame
         {
-            Simp.update_window(it.window);
+            if it.type == .QUIT then window_wants_to_quit = true;
 
-            if it.window != window continue;
-            if it.width == window_width && it.height == window_height continue;
-
-            window_width  = it.width;
-            window_height = it.height;
+            if #complete mode ==
+            {
+                case .CANVAS;  handle_canvas_input(it);
+                case .COMMAND; handle_command_input(it);
+            } 
         }
 
-        for Input.events_this_frame {
-            if it.type == .QUIT then quit = true;
-
-            if it.type == {
-              case .KEYBOARD;
-                if it.key_pressed && it.key_code == .ESCAPE quit = true;
-                
-                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "+" adjust_scale(+1);
-                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "-" adjust_scale(-1);
-                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "0" set_scale(1);
-
-                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "S" save_as_jai_file();
-
-                if it.key_pressed && it.ctrl_pressed && it.key_code == #char "N" new_fragment();
-
-                if it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT
-                {
-                    active_fragment = -1;
-                    ui_offset_drag_start_pos = ui_offset;
-
-                    x, y := get_mouse_pointer_position(window, true);
-                    left_click_down_start_pos.x = xx x;
-                    left_click_down_start_pos.y = xx y;
-                    x = xx (x - ui_offset.x);
-                    y = xx (y - ui_offset.y);
-                    left_click_down = true;
-                    for fragments
-                    {
-                        if x < cast(int) it.bot_left.x continue;
-                        if x > cast(int) it.top_right.x continue;
-                        if y < cast(int) it.bot_left.y continue;
-                        if y > cast(int) it.top_right.y continue;
-                        active_fragment = it_index;
-                        active_fragment_click_offset.x = it.center.x - (x / ui_scale);
-                        active_fragment_click_offset.y = it.center.y - (y / ui_scale);
-                    }
-                }
-                if !it.key_pressed && it.key_code == .MOUSE_BUTTON_LEFT left_click_down = false;
-            }
-        }
-
-        if left_click_down
-        {
-            if active_fragment >= 0
-            {
-                x, y := get_mouse_pointer_position(window, true);
-                x = xx (x - ui_offset.x);
-                y = xx (y - ui_offset.y);
-                fragments[active_fragment].center.x = active_fragment_click_offset.x + x / ui_scale;
-                fragments[active_fragment].center.y = active_fragment_click_offset.y + y / ui_scale;
-                recalculate(*fragments[active_fragment]);
-            }
-            else
-            {
-                x, y := get_mouse_pointer_position(window, true);
-                ui_offset.x = ui_offset_drag_start_pos.x + x - left_click_down_start_pos.x;
-                ui_offset.y = ui_offset_drag_start_pos.y + y - left_click_down_start_pos.y;
-            }
-        } 
+        update_canvas();
+        update_command();
 
         draw_one_frame();
+
         sleep_milliseconds(10);
         reset_temporary_storage();
     }
+}
+
+handle_window_resize :: ()
+{
+    for Input.get_window_resizes()
+    {
+        Simp.update_window(it.window);
+
+        if it.window != window continue;
+        if it.width == window_width && it.height == window_height continue;
+
+        window_width  = it.width;
+        window_height = it.height;
+    }
+}
+
+handle_canvas_input :: (using event: Input.Event)
+{
+    if type != .KEYBOARD return;
+
+    if key_pressed && key_code == .ESCAPE window_wants_to_quit = true;
+
+    if key_pressed && ctrl_pressed && key_code == #char "+" adjust_scale(+1);
+    if key_pressed && ctrl_pressed && key_code == #char "-" adjust_scale(-1);
+    if key_pressed && ctrl_pressed && key_code == #char "0" set_scale(1);
+
+    if key_pressed && ctrl_pressed && key_code == #char "S" save_as_jai_file();
+
+    if key_pressed && ctrl_pressed && key_code == #char "N" new_fragment();
+
+    if key_pressed && ctrl_pressed && key_code == #char " " mode = .COMMAND;
+
+    if key_pressed && key_code == .MOUSE_BUTTON_LEFT
+    {
+        active_fragment = -1;
+        ui_offset_drag_start_pos = ui_offset;
+
+        x, y := get_mouse_pointer_position(window, true);
+        left_click_down_start_pos.x = xx x;
+        left_click_down_start_pos.y = xx y;
+        x = xx (x - ui_offset.x);
+        y = xx (y - ui_offset.y);
+        left_click_down = true;
+        for fragments
+        {
+            if x < cast(int) it.bot_left.x continue;
+            if x > cast(int) it.top_right.x continue;
+            if y < cast(int) it.bot_left.y continue;
+            if y > cast(int) it.top_right.y continue;
+            active_fragment = it_index;
+            active_fragment_click_offset.x = it.center.x - (x / ui_scale);
+            active_fragment_click_offset.y = it.center.y - (y / ui_scale);
+        }
+    }
+
+    if !key_pressed && key_code == .MOUSE_BUTTON_LEFT left_click_down = false;
+}
+
+update_canvas :: ()
+{
+    if mode != .CANVAS return;
+
+    if left_click_down
+    {
+        if active_fragment >= 0
+        {
+            x, y := get_mouse_pointer_position(window, true);
+            x = xx (x - ui_offset.x);
+            y = xx (y - ui_offset.y);
+            fragments[active_fragment].center.x = active_fragment_click_offset.x + x / ui_scale;
+            fragments[active_fragment].center.y = active_fragment_click_offset.y + y / ui_scale;
+            recalculate(*fragments[active_fragment]);
+        }
+        else
+        {
+            x, y := get_mouse_pointer_position(window, true);
+            ui_offset.x = ui_offset_drag_start_pos.x + x - left_click_down_start_pos.x;
+            ui_offset.y = ui_offset_drag_start_pos.y + y - left_click_down_start_pos.y;
+        }
+    }
+}
+
+handle_command_input :: (using event: Input.Event)
+{
+    if key_pressed && key_code == .ESCAPE  mode = .CANVAS;
+}
+
+update_command :: ()
+{
+
 }
 
 new_fragment :: ()
@@ -205,28 +244,36 @@ recalculate :: (fragment: *Fragment)
 
 draw_one_frame :: () {
     Simp.clear_render_target(window_colour.x, window_colour.y, window_colour.z, window_colour.w);
-    Simp.set_shader_for_color();
 
-    // @TODO: why does this need doing in 2 passes?
     for frag, frag_index: fragments
     {
         bl := frag.bot_left;   bl += ui_offset;
         tr := frag.top_right;  tr += ui_offset;
 
+        Simp.set_shader_for_color();
         if frag_index == active_fragment
         {
             Simp.immediate_quad(bl.x-1, bl.y-1, tr.x+1, tr.y+1, .{1,1,1,1});
         }
         Simp.immediate_quad(bl.x, bl.y, tr.x, tr.y, frag.colour);
-    }
-    for frag: fragments
-    {
+    
         for text, line: frag.text
         {
             text_x := frag.bot_left.x + font_width + ui_offset.x;
             text_y := frag.top_right.y - ((line + 1) * font_height) - font_height * 0.25 + ui_offset.y;
             Simp.draw_text(font, xx text_x, xx text_y, text);
         }
+    }
+
+    if mode == .COMMAND
+    {
+        tl := Vector2.{300                    , xx (window_height - 100)};
+        br := Vector2.{xx (window_width - 300), xx (window_height - 100 - font_height * 2)};
+
+        Simp.set_shader_for_color();
+        Simp.immediate_quad(tl.x-1, tl.y+1, br.x+1, br.y-1, .{1., 1., 1., 1});
+        Simp.immediate_quad(tl.x  , tl.y  , br.x  , br.y  , .{.2, .2, .2, 1});
+
     }
 
     Simp.swap_buffers(window);
