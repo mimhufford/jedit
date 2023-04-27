@@ -67,7 +67,6 @@ main :: ()
         }
 
         update_canvas();
-        update_command();
 
         draw_one_frame();
 
@@ -159,11 +158,25 @@ update_canvas :: ()
 handle_command_input :: (using event: Input.Event)
 {
     if key_pressed && key_code == .ESCAPE  mode = .CANVAS;
+    if key_pressed && key_code == .ENTER 
+    {
+        execute_command(builder_to_string(*command));
+        mode = .CANVAS;
+    }
+
+    if key_pressed && key_code >= 32 && key_code <= 126 append(*command, cast(u8)key_code);
 }
 
-update_command :: ()
+execute_command :: (command: string)
 {
+    to_lower_in_place(command);
 
+    // @TODO hook these up using metaprogramming
+    if command ==
+    {
+        case "reset scale";   set_scale(1);
+        case "reset offset";  set_ui_offset(0, 0);
+    }
 }
 
 new_fragment :: ()
@@ -197,6 +210,12 @@ save_as_jai_file :: ()
 adjust_frag_index :: (delta: s64)
 {
     active_fragment = (active_fragment + delta + fragments.count) % fragments.count;
+}
+
+set_ui_offset :: (x: float, y: float)
+{
+    ui_offset.x = x;
+    ui_offset.y = y;
 }
 
 adjust_scale :: (delta: s64)
@@ -267,13 +286,15 @@ draw_one_frame :: () {
 
     if mode == .COMMAND
     {
-        tl := Vector2.{300                    , xx (window_height - 100)};
-        br := Vector2.{xx (window_width - 300), xx (window_height - 100 - font_height * 2)};
+        top_padding :: 100;
+        tl := Vector2.{window_width * 0.5 - font_width * 25, xx (window_height - top_padding)};
+        br := Vector2.{window_width * 0.5 + font_width * 25, xx (window_height - top_padding - font_height * 2)};
 
         Simp.set_shader_for_color();
         Simp.immediate_quad(tl.x-1, tl.y+1, br.x+1, br.y-1, .{1., 1., 1., 1});
         Simp.immediate_quad(tl.x  , tl.y  , br.x  , br.y  , .{.2, .2, .2, 1});
 
+        Simp.draw_text(font, xx (tl.x + font_width), xx (tl.y - font_height * 1.25), builder_to_string(*command, do_reset = false));
     }
 
     Simp.swap_buffers(window);
@@ -303,6 +324,6 @@ Simp  :: #import "Simp";
 #run {
     #if OS == .WINDOWS {
         #import "Windows_Resources";
-        disable_runtime_console();
+       disable_runtime_console();
     }
 }
