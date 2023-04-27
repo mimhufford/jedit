@@ -64,7 +64,7 @@ main :: ()
                 case .CANVAS;   handle_canvas_input(it);
                 case .COMMAND;  handle_command_input(it);
                 case .FRAGMENT; handle_fragment_input(it);
-            } 
+            }
         }
 
         update_canvas();
@@ -171,7 +171,7 @@ handle_command_input :: (using event: Input.Event)
         command.count = 0;
         mode = .CANVAS;
     }
-    else if key_pressed && key_code == .ENTER 
+    else if key_pressed && key_code == .ENTER
     {
         command.count = 0;
         execute_command(xx command);
@@ -210,24 +210,34 @@ handle_fragment_input :: (using event: Input.Event)
         active_fragment = -1;
         mode = .CANVAS;
     }
+    else if key_pressed && key_code == .ARROW_UP
+    {
+        frag := *fragments[active_fragment];
+        if frag.line_index > 0 frag.line_index -= 1;
+    }
+    else if key_pressed && key_code == .ARROW_DOWN
+    {
+        frag := *fragments[active_fragment];
+        if frag.line_index < frag.lines.count - 1 frag.line_index += 1;
+    }
     else if key_pressed && key_code == .BACKSPACE
     {
         frag := *fragments[active_fragment];
         if frag.lines.count == 0 return;
-        line := *frag.lines[frag.lines.count - 1];
-        if line.count > 0            line.count -= 1;
-        else if frag.lines.count > 1 pop(*frag.lines);
+        line := *frag.lines[frag.line_index];
+        if line.count > 0 line.count -= 1;
         recalculate(frag);
     }
-    else if key_pressed && key_code == .ENTER 
+    else if key_pressed && key_code == .ENTER
     {
         frag := *fragments[active_fragment];
+        frag.line_index += 1;
         fragment_add_line(frag, "");
     }
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
         frag := *fragments[active_fragment];
-        line := *frag.lines[frag.lines.count - 1];
+        line := *frag.lines[frag.line_index];
         array_add(line, cast(u8)utf32);
         recalculate(frag);
     }
@@ -295,6 +305,10 @@ Fragment :: struct
     center : Vector2;
     colour := Vector4.{.2, .2, .2, 1};
 
+    // Fragment edit mode state variables
+    line_index := 0;
+    col_index  := 0;
+
     // The following variables are calculated and cached based on changes to text and center
     bot_left    : Vector2;
     top_right   : Vector2;
@@ -319,7 +333,8 @@ recalculate :: (fragment: *Fragment)
     fragment.top_right = ui_scale * fragment.center + bg_half_dim;
 }
 
-draw_one_frame :: () {
+draw_one_frame :: ()
+{
     Simp.clear_render_target(window_colour.x, window_colour.y, window_colour.z, window_colour.w);
 
     for frag, frag_index: fragments
@@ -328,12 +343,22 @@ draw_one_frame :: () {
         tr := frag.top_right;  tr += ui_offset;
 
         Simp.set_shader_for_color();
+
         if frag_index == active_fragment
         {
+            // draw 1 pixel white border
             Simp.immediate_quad(bl.x-1, bl.y-1, tr.x+1, tr.y+1, .{1,1,1,1});
         }
+
+        // draw fragment background
         Simp.immediate_quad(bl.x, bl.y, tr.x, tr.y, frag.colour);
-    
+
+        if frag_index == active_fragment && mode == .FRAGMENT
+        {
+            // highlight current line
+            Simp.immediate_quad(bl.x, tr.y - (font_height * frag.line_index) - font_height / 2, tr.x, tr.y - (font_height * (frag.line_index + 1)) - font_height / 2, .{.3,.3,.3,1});
+        }
+
         for line, line_index: frag.lines
         {
             text_x := frag.bot_left.x + font_width + ui_offset.x;
