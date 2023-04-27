@@ -164,7 +164,14 @@ handle_command_input :: (using event: Input.Event)
         mode = .CANVAS;
     }
 
-    if key_pressed && key_code >= 32 && key_code <= 126 append(*command, cast(u8)key_code);
+    if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
+    {
+        // @HACK the shortcut for this is Ctrl+Space which means a leading space is instantly
+        //       added to the command buffer. This hack avoids it, but definitely isn't ideal
+        if utf32 == 32 && builder_string_length(*command) == 0 return;
+
+        append(*command, cast(u8)utf32);
+    }
 }
 
 execute_command :: (command: string)
@@ -324,6 +331,6 @@ Simp  :: #import "Simp";
 #run {
     #if OS == .WINDOWS {
         #import "Windows_Resources";
-       disable_runtime_console();
+        disable_runtime_console();
     }
 }
