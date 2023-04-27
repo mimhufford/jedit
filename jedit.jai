@@ -16,7 +16,7 @@ font_width  := 0; // set programmatically when changing scale
 active_fragment_click_offset : Vector2; // used when dragging a fragment around to avoid snapping to its center
 active_fragment := -1;
 fragments : [..]Fragment;
-mode : enum { CANVAS; COMMAND; } = .CANVAS;
+mode : enum { CANVAS; COMMAND; FRAGMENT; } = .CANVAS;
 command : String_Builder;
 
 main :: ()
@@ -61,8 +61,9 @@ main :: ()
 
             if #complete mode ==
             {
-                case .CANVAS;  handle_canvas_input(it);
-                case .COMMAND; handle_command_input(it);
+                case .CANVAS;   handle_canvas_input(it);
+                case .COMMAND;  handle_command_input(it);
+                case .FRAGMENT; handle_fragment_input(it);
             } 
         }
 
@@ -104,6 +105,14 @@ handle_canvas_input :: (using event: Input.Event)
     if key_pressed && ctrl_pressed && key_code == #char "N" new_fragment();
 
     if key_pressed && ctrl_pressed && key_code == #char " " mode = .COMMAND;
+
+    if key_pressed && !ctrl_pressed && key_code == #char " "
+    {
+        if active_fragment >= 0
+        {
+            mode = .FRAGMENT;
+        }
+    }
 
     if key_pressed && key_code == .MOUSE_BUTTON_LEFT
     {
@@ -191,6 +200,21 @@ execute_command :: (command: string)
     {
         case "reset scale";   set_scale(1);
         case "reset offset";  set_ui_offset(0, 0);
+    }
+}
+
+handle_fragment_input :: (using event: Input.Event)
+{
+    if key_pressed && key_code == .ESCAPE
+    {
+        active_fragment = -1;
+        mode = .CANVAS;
+    }
+    else if key_pressed && key_code == .ENTER 
+    {
+        frag := *fragments[active_fragment];
+        array_add(*frag.text, "// testing adding new lines");
+        recalculate(frag);
     }
 }
 
