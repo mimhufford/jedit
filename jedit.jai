@@ -210,6 +210,15 @@ handle_fragment_input :: (using event: Input.Event)
         active_fragment = -1;
         mode = .CANVAS;
     }
+    else if key_pressed && key_code == .BACKSPACE
+    {
+        frag := *fragments[active_fragment];
+        if frag.lines.count == 0 return;
+        line := *frag.lines[frag.lines.count - 1];
+        if line.count > 0  line.count -= 1;
+        else               pop(*frag.lines);
+        recalculate(frag);
+    }
     else if key_pressed && key_code == .ENTER 
     {
         frag := *fragments[active_fragment];
