@@ -157,20 +157,22 @@ update_canvas :: ()
 
 handle_command_input :: (using event: Input.Event)
 {
-    if key_pressed && key_code == .ESCAPE  mode = .CANVAS;
-    if key_pressed && key_code == .ENTER 
+    if key_pressed && key_code == .ESCAPE
+    {
+        reset(*command);
+        mode = .CANVAS;
+    }
+    else if key_pressed && key_code == .ENTER 
     {
         execute_command(builder_to_string(*command));
         mode = .CANVAS;
     }
-
-    if key_pressed && key_code == .BACKSPACE
+    else if key_pressed && key_code == .BACKSPACE
     {
         current_buffer := get_current_buffer(*command);
         if current_buffer.count  current_buffer.count -= 1;
     }
-
-    if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
+    else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
         // @HACK the shortcut for this is Ctrl+Space which means a leading space is instantly
         //       added to the command buffer. This hack avoids it, but definitely isn't ideal
