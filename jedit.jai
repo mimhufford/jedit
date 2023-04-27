@@ -39,15 +39,15 @@ main :: ()
     {
         f := array_add(*fragments);
         f.center = .{700, 500};
-        add_text(f, "adjust_frag_index :: (delta: s64)");
-        add_text(f, "{");
-        add_text(f, "    active_fragment = (active_fragment + delta + fragments.count) % fragments.count;");
-        add_text(f, "}");
+        fragment_add_line(f, "adjust_frag_index :: (delta: s64)");
+        fragment_add_line(f, "{");
+        fragment_add_line(f, "    active_fragment = (active_fragment + delta + fragments.count) % fragments.count;");
+        fragment_add_line(f, "}");
     }
     {
         f := array_add(*fragments);
         f.center = .{550, 200};
-        add_text(f, "colour :: Vector4.{1, 1, 1, 1};");
+        fragment_add_line(f, "colour :: Vector4.{1, 1, 1, 1};");
     }
 
     while !window_wants_to_quit
@@ -213,8 +213,7 @@ handle_fragment_input :: (using event: Input.Event)
     else if key_pressed && key_code == .ENTER 
     {
         frag := *fragments[active_fragment];
-        array_add(*frag.text, "// testing adding new lines");
-        recalculate(frag);
+        fragment_add_line(frag, "// testing adding new lines");
     }
 }
 
@@ -222,7 +221,7 @@ new_fragment :: ()
 {
     f := array_add(*fragments);
     f.center = .{100, 100};
-    add_text(f, copy_string(tprint("frag% :: %;", fragments.count, fragments.count)));
+    fragment_add_line(f, copy_string(tprint("frag% :: %;", fragments.count, fragments.count)));
 }
 
 save_as_jai_file :: ()
@@ -231,9 +230,9 @@ save_as_jai_file :: ()
 
     for frag: fragments
     {
-        for line: frag.text
+        for line: frag.lines
         {
-            append(*sb, line);
+            append(*sb, to_string(line));
             append(*sb, "\n");
         }
 
@@ -272,9 +271,11 @@ set_scale :: (new_scale: float)
     for * fragments recalculate(it);
 }
 
+Line :: [..]u8; // @TODO: support non-ascii
+
 Fragment :: struct
 {
-    text   : [..]string;
+    lines  : [..]Line;
     center : Vector2;
     colour := Vector4.{.2, .2, .2, 1};
 
@@ -283,18 +284,20 @@ Fragment :: struct
     top_right   : Vector2;
 }
 
-add_text :: (fragment: *Fragment, text: string)
+fragment_add_line :: (fragment: *Fragment, text: string)
 {
-    array_add(*fragment.text, text);
+    line : Line;
+    for 0..text.count-1 array_add(*line, text[it]);
+    array_add(*fragment.lines, line);
     recalculate(fragment);
 }
 
 recalculate :: (fragment: *Fragment)
 {
     text_width := 0;
-    for fragment.text text_width = max(text_width, Simp.prepare_text(font, it));
+    for fragment.lines text_width = max(text_width, Simp.prepare_text(font, xx it));
     bg_half_width  := (text_width / 2.0) + font_width; // a char width padding on left and right
-    bg_half_height := ((font_height * fragment.text.count) / 2.0) + (font_height / 2.0); // half a char height padding on top and bottom
+    bg_half_height := ((font_height * fragment.lines.count) / 2.0) + (font_height / 2.0); // half a char height padding on top and bottom
     bg_half_dim := Vector2.{xx bg_half_width, xx bg_half_height};
     fragment.bot_left  = ui_scale * fragment.center - bg_half_dim;
     fragment.top_right = ui_scale * fragment.center + bg_half_dim;
@@ -315,11 +318,11 @@ draw_one_frame :: () {
         }
         Simp.immediate_quad(bl.x, bl.y, tr.x, tr.y, frag.colour);
     
-        for text, line: frag.text
+        for line, line_index: frag.lines
         {
             text_x := frag.bot_left.x + font_width + ui_offset.x;
-            text_y := frag.top_right.y - ((line + 1) * font_height) - font_height * 0.25 + ui_offset.y;
-            Simp.draw_text(font, xx text_x, xx text_y, text);
+            text_y := frag.top_right.y - ((line_index + 1) * font_height) - font_height * 0.25 + ui_offset.y;
+            Simp.draw_text(font, xx text_x, xx text_y, xx line);
         }
     }
 
@@ -363,6 +366,7 @@ Simp  :: #import "Simp";
 #run {
     #if OS == .WINDOWS {
         #import "Windows_Resources";
-        disable_runtime_console();
+        // @TODO: put behind a release flag
+        // disable_runtime_console();
     }
 }
