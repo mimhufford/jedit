@@ -17,7 +17,7 @@ active_fragment_click_offset : Vector2; // used when dragging a fragment around 
 active_fragment := -1;
 fragments : [..]Fragment;
 mode : enum { CANVAS; COMMAND; FRAGMENT; } = .CANVAS;
-command : String_Builder;
+command : Line;
 
 main :: ()
 {
@@ -168,26 +168,26 @@ handle_command_input :: (using event: Input.Event)
 {
     if key_pressed && key_code == .ESCAPE
     {
-        reset(*command);
+        command.count = 0;
         mode = .CANVAS;
     }
     else if key_pressed && key_code == .ENTER 
     {
-        execute_command(builder_to_string(*command));
+        command.count = 0;
+        execute_command(xx command);
         mode = .CANVAS;
     }
     else if key_pressed && key_code == .BACKSPACE
     {
-        current_buffer := get_current_buffer(*command);
-        if current_buffer.count  current_buffer.count -= 1;
+        if command.count > 0 command.count -= 1;
     }
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
         // @HACK the shortcut for this is Ctrl+Space which means a leading space is instantly
         //       added to the command buffer. This hack avoids it, but definitely isn't ideal
-        if utf32 == 32 && builder_string_length(*command) == 0 return;
+        if utf32 == 32 && command.count == 0 return;
 
-        append(*command, cast(u8)utf32);
+        array_add(*command, cast(u8)utf32);
     }
 }
 
@@ -352,7 +352,7 @@ draw_one_frame :: () {
         Simp.immediate_quad(tl.x-1, tl.y+1, br.x+1, br.y-1, .{1., 1., 1., 1});
         Simp.immediate_quad(tl.x  , tl.y  , br.x  , br.y  , .{.2, .2, .2, 1});
 
-        Simp.draw_text(font, xx (tl.x + font_width), xx (tl.y - font_height * 1.25), builder_to_string(*command, do_reset = false));
+        Simp.draw_text(font, xx (tl.x + font_width), xx (tl.y - font_height * 1.25), xx command);
     }
 
     Simp.swap_buffers(window);
