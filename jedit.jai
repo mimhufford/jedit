@@ -39,15 +39,15 @@ main :: ()
     {
         f := array_add(*fragments);
         f.center = .{700, 500};
-        fragment_add_line(f, "adjust_frag_index :: (delta: s64)");
-        fragment_add_line(f, "{");
-        fragment_add_line(f, "    active_fragment = (active_fragment + delta + fragments.count) % fragments.count;");
-        fragment_add_line(f, "}");
+        fragment_append_line(f, "adjust_frag_index :: (delta: s64)");
+        fragment_append_line(f, "{");
+        fragment_append_line(f, "    active_fragment = (active_fragment + delta + fragments.count) % fragments.count;");
+        fragment_append_line(f, "}");
     }
     {
         f := array_add(*fragments);
         f.center = .{550, 200};
-        fragment_add_line(f, "colour :: Vector4.{1, 1, 1, 1};");
+        fragment_append_line(f, "colour :: Vector4.{1, 1, 1, 1};");
     }
 
     while !window_wants_to_quit
@@ -214,31 +214,77 @@ handle_fragment_input :: (using event: Input.Event)
     {
         frag := *fragments[active_fragment];
         if frag.line_index > 0 frag.line_index -= 1;
+        line := *frag.lines[frag.line_index];
+        frag.col_index = min(frag.col_index, line.count);
     }
     else if key_pressed && key_code == .ARROW_DOWN
     {
         frag := *fragments[active_fragment];
-        if frag.line_index < frag.lines.count - 1 frag.line_index += 1;
+        frag.line_index = min(frag.lines.count - 1, frag.line_index + 1);
+        line := *frag.lines[frag.line_index];
+        frag.col_index = min(frag.col_index, line.count);
+    }
+    else if key_pressed && key_code == .ARROW_LEFT
+    {
+        frag := *fragments[active_fragment];
+        if frag.col_index > 0 frag.col_index -= 1;
+    }
+    else if key_pressed && key_code == .ARROW_RIGHT
+    {
+        frag := *fragments[active_fragment];
+        line := *frag.lines[frag.line_index];
+        frag.col_index = min(frag.col_index + 1, line.count);
+    }
+    else if key_pressed && key_code == .HOME
+    {
+        frag := *fragments[active_fragment];
+        frag.col_index = 0;
+    }
+    else if key_pressed && key_code == .END
+    {
+        frag := *fragments[active_fragment];
+        line := *frag.lines[frag.line_index];
+        frag.col_index = line.count;
     }
     else if key_pressed && key_code == .BACKSPACE
     {
         frag := *fragments[active_fragment];
         if frag.lines.count == 0 return;
         line := *frag.lines[frag.line_index];
-        if line.count > 0 line.count -= 1;
+        if frag.col_index == 0
+        {
+            if frag.line_index > 0
+            {
+                // delete the first character causing the remains of the
+                // current line to be appended to the previous line
+                prev_line := *frag.lines[frag.line_index - 1];
+                frag.col_index = prev_line.count;
+                for 0..line.count-1 array_add(prev_line, (<<line)[it]);
+                array_ordered_remove_by_index(*frag.lines, frag.line_index);
+                frag.line_index -= 1;
+            }
+        }
+        else
+        {
+            // delete a character from somewhere inside the string
+            array_ordered_remove_by_index(line, frag.col_index - 1);
+            frag.col_index = max(frag.col_index - 1, 0);
+        }
         recalculate(frag);
     }
     else if key_pressed && key_code == .ENTER
     {
         frag := *fragments[active_fragment];
         frag.line_index += 1;
-        fragment_add_line(frag, "");
+        frag.col_index = 0;
+        fragment_insert_line(frag, "");
     }
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
         frag := *fragments[active_fragment];
         line := *frag.lines[frag.line_index];
-        array_add(line, cast(u8)utf32);
+        array_insert_at(line, cast(u8)utf32, frag.col_index);
+        frag.col_index += 1;
         recalculate(frag);
     }
 }
@@ -247,7 +293,7 @@ new_fragment :: ()
 {
     f := array_add(*fragments);
     f.center = .{100, 100};
-    fragment_add_line(f, copy_string(tprint("frag% :: %;", fragments.count, fragments.count)));
+    fragment_append_line(f, copy_string(tprint("frag% :: %;", fragments.count, fragments.count)));
 }
 
 save_as_jai_file :: ()
@@ -314,7 +360,15 @@ Fragment :: struct
     top_right   : Vector2;
 }
 
-fragment_add_line :: (fragment: *Fragment, text: string)
+fragment_insert_line :: (fragment: *Fragment, text: string)
+{
+    line : Line;
+    for 0..text.count-1 array_add(*line, text[it]);
+    array_insert_at(*fragment.lines, line, fragment.line_index);
+    recalculate(fragment);
+}
+
+fragment_append_line :: (fragment: *Fragment, text: string)
 {
     line : Line;
     for 0..text.count-1 array_add(*line, text[it]);
@@ -355,8 +409,13 @@ draw_one_frame :: ()
 
         if frag_index == active_fragment && mode == .FRAGMENT
         {
-            // highlight current line
-            Simp.immediate_quad(bl.x, tr.y - (font_height * frag.line_index) - font_height / 2, tr.x, tr.y - (font_height * (frag.line_index + 1)) - font_height / 2, .{.3,.3,.3,1});
+            // highlight cursor position
+            left   := bl.x + (font_width * frag.col_index) + (font_width * 1);
+            right  := bl.x + (font_width * frag.col_index) + (font_width * 2);
+            top    := tr.y - (font_height * frag.line_index) - font_height / 2;
+            bottom := tr.y - (font_height * (frag.line_index + 1)) - font_height / 2;
+            colour := frag.colour + .{.2, .2, .2, 0};
+            Simp.immediate_quad(left, top, right, bottom, colour);
         }
 
         for line, line_index: frag.lines
