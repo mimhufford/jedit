@@ -36,19 +36,7 @@ main :: ()
     set_scale(1);
     load_font();
 
-    {
-        f := array_add(*fragments);
-        f.center = .{700, 500};
-        fragment_append_line(f, "adjust_frag_index :: (delta: s64)");
-        fragment_append_line(f, "{");
-        fragment_append_line(f, "    active_fragment = (active_fragment + delta + fragments.count) % fragments.count;");
-        fragment_append_line(f, "}");
-    }
-    {
-        f := array_add(*fragments);
-        f.center = .{550, 200};
-        fragment_append_line(f, "colour :: Vector4.{1, 1, 1, 1};");
-    }
+    load_file("example.jai");
 
     while !window_wants_to_quit
     {
@@ -439,6 +427,35 @@ draw_one_frame :: ()
     }
 
     Simp.swap_buffers(window);
+}
+
+load_file :: (path: string)
+{
+    // @TEMP: simple source comment based system until proper jai parsing is implemented
+
+    data, ok := read_entire_file(path);
+
+    if !ok return;
+
+    frag : *Fragment;
+
+    lines := split(data, "\n");
+    
+    for file_line: lines
+    {
+        if starts_with(file_line, "//// FRAGMENT")
+        {
+            // @TODO: parse the position from the //// FRAGMENT line
+            frag = array_add(*fragments);
+        }
+        else
+        {
+            line := array_add(*frag.lines);
+            for 0..file_line.count-1 array_add(line, file_line[it]);
+        }
+    }
+
+    for * fragments recalculate(it);
 }
 
 load_font :: ()
