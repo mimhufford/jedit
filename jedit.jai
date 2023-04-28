@@ -398,11 +398,10 @@ draw_one_frame :: ()
 
         Simp.set_shader_for_color();
 
-        if frag_index == active_fragment
-        {
-            // draw 1 pixel white border
-            Simp.immediate_quad(bl.x-1, bl.y-1, tr.x+1, tr.y+1, .{1,1,1,1});
-        }
+        // draw 1 pixel border
+        border_colour := Vector4.{0, 0, 0, 1};
+        if frag_index == active_fragment border_colour = .{1, 1, 1, 1};
+        Simp.immediate_quad(bl.x-1, bl.y-1, tr.x+1, tr.y+1, border_colour);
 
         // draw fragment background
         Simp.immediate_quad(bl.x, bl.y, tr.x, tr.y, frag.colour);
