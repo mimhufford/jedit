@@ -173,8 +173,8 @@ handle_command_input :: (using event: Input.Event)
     }
     else if key_pressed && key_code == .ENTER
     {
-        command.count = 0;
         execute_command(xx command);
+        command.count = 0;
         mode = .CANVAS;
     }
     else if key_pressed && key_code == .BACKSPACE
