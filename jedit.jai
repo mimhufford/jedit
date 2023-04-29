@@ -445,8 +445,10 @@ load_file :: (path: string)
     {
         if starts_with(file_line, "//// FRAGMENT")
         {
-            // @TODO: parse the position from the //// FRAGMENT line
+            parts := split(file_line, " ");
             frag = array_add(*fragments);
+            frag.center.x = parse_float(*parts[2]);
+            frag.center.y = parse_float(*parts[3]);
         }
         else
         {

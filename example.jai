@@ -1,9 +1,9 @@
-//// FRAGMENT 100 100 ////
+//// FRAGMENT 800 150 ////
 adjust_frag_index :: (delta: s64)
 {
     active_fragment = (active_fragment + delta + fragments.count) % fragments.count;
 }
-//// FRAGMENT 400 200 ////
+//// FRAGMENT 1200 500 ////
 set_ui_offset :: (x: float, y: float)
 {
     ui_offset.x = x;
