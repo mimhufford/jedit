@@ -290,19 +290,19 @@ save_as_jai_file :: ()
 
     for frag: fragments
     {
+        append(*sb, tprint("//// FRAGMENT % % ////\n", frag.center.x, frag.center.y));
+
         for line: frag.lines
         {
             append(*sb, to_string(line));
             append(*sb, "\n");
         }
-
-        append(*sb, "\n");
     }
 
     contents := builder_to_string(*sb);
-    contents.count -= 2; // remove the last two new lines
+    contents.count -= 1; // remove the last extra new line
 
-    write_entire_file("test.jai", contents);
+    write_entire_file("example.jai", contents);
 }
 
 adjust_frag_index :: (delta: s64)
