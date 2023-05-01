@@ -263,14 +263,11 @@ handle_fragment_input :: (using event: Input.Event)
     else if key_pressed && key_code == .ENTER
     {
         frag := *fragments[active_fragment];
-        prev_line := *frag.lines[frag.line_index];
         frag.line_index += 1;
         fragment_insert_line(frag, "");
+        prev_line := *frag.lines[frag.line_index - 1];
         next_line := *frag.lines[frag.line_index];
-        for frag.col_index..prev_line.count - 1
-        {
-            array_add(next_line, prev_line.data[it]);
-        }
+        for frag.col_index..prev_line.count-1 array_add(next_line, prev_line.data[it]);
         prev_line.count -= next_line.count;
         frag.col_index = 0;
         recalculate(frag);
