@@ -208,6 +208,7 @@ handle_fragment_input :: (using event: Input.Event)
     else if                key_pressed && key_code == .ARROW_LEFT    move_cursor_left();
     else if                key_pressed && key_code == .ARROW_RIGHT   move_cursor_right();
     else if                key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
+    else if                key_pressed && key_code == .DELETE        delete_character_under_cursor();
     else if                key_pressed && key_code == .TAB           insert_tab_as_spaces();
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
@@ -285,6 +286,33 @@ delete_character_before_cursor :: ()
         // delete a character from somewhere inside the string
         array_ordered_remove_by_index(line, frag.col_index - 1);
         frag.col_index = max(frag.col_index - 1, 0);
+    }
+    recalculate(frag);
+}
+
+delete_character_under_cursor :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    if frag.lines.count == 0 return;
+    line := *frag.lines[frag.line_index];
+    if line.count == 0 && frag.lines.count > 1
+    {
+        // delete the entire line because there's nothing left
+        array_ordered_remove_by_index(*frag.lines, frag.line_index);
+    }
+    else if line.count > 0 && frag.col_index < line.count
+    {
+        // delete from inside a line
+        array_ordered_remove_by_index(line, frag.col_index);
+        frag.col_index = min(frag.col_index, line.count);
+    }
+    else if line.count > 0 && frag.col_index == line.count && frag.line_index < frag.lines.count-1
+    {
+        // delete from the end of a line and append the next line's contents
+        next_line := *frag.lines[frag.line_index + 1];
+        for 0..next_line.count-1 array_add(line, next_line.data[it]);
+        array_ordered_remove_by_index(*frag.lines, frag.line_index + 1);
     }
     recalculate(frag);
 }
