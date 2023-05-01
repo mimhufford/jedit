@@ -260,6 +260,14 @@ handle_fragment_input :: (using event: Input.Event)
         }
         recalculate(frag);
     }
+    else if key_pressed && key_code == .TAB
+    {
+        frag := *fragments[active_fragment];
+        line := *frag.lines[frag.line_index];
+        for 1..4 array_insert_at(line, #char " ", frag.col_index);
+        frag.col_index += 4;
+        recalculate(frag);
+    }
     else if key_pressed && key_code == .ENTER
     {
         frag := *fragments[active_fragment];
