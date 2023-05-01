@@ -273,6 +273,7 @@ handle_fragment_input :: (using event: Input.Event)
         }
         prev_line.count -= next_line.count;
         frag.col_index = 0;
+        recalculate(frag);
     }
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
