@@ -198,102 +198,17 @@ handle_fragment_input :: (using event: Input.Event)
         active_fragment = -1;
         mode = .CANVAS;
     }
-    else if alt_pressed && key_pressed && key_code == .ARROW_UP
-    {
-        frag := *fragments[active_fragment];
-        if frag.line_index == 0 return;
-        Swap(*frag.lines[frag.line_index - 1], *frag.lines[frag.line_index]);
-        frag.line_index -= 1;
-    }
-    else if alt_pressed && key_pressed && key_code == .ARROW_DOWN
-    {
-        frag := *fragments[active_fragment];
-        if frag.line_index == frag.lines.count - 1 return;
-        Swap(*frag.lines[frag.line_index + 1], *frag.lines[frag.line_index]);
-        frag.line_index += 1;
-    }
-    else if key_pressed && key_code == .ARROW_UP
-    {
-        frag := *fragments[active_fragment];
-        if frag.line_index > 0 frag.line_index -= 1;
-        line := *frag.lines[frag.line_index];
-        frag.col_index = min(frag.col_index, line.count);
-    }
-    else if key_pressed && key_code == .ARROW_DOWN
-    {
-        frag := *fragments[active_fragment];
-        frag.line_index = min(frag.lines.count - 1, frag.line_index + 1);
-        line := *frag.lines[frag.line_index];
-        frag.col_index = min(frag.col_index, line.count);
-    }
-    else if key_pressed && key_code == .ARROW_LEFT
-    {
-        frag := *fragments[active_fragment];
-        if frag.col_index > 0 frag.col_index -= 1;
-    }
-    else if key_pressed && key_code == .ARROW_RIGHT
-    {
-        frag := *fragments[active_fragment];
-        line := *frag.lines[frag.line_index];
-        frag.col_index = min(frag.col_index + 1, line.count);
-    }
-    else if key_pressed && key_code == .HOME
-    {
-        frag := *fragments[active_fragment];
-        frag.col_index = 0;
-    }
-    else if key_pressed && key_code == .END
-    {
-        frag := *fragments[active_fragment];
-        line := *frag.lines[frag.line_index];
-        frag.col_index = line.count;
-    }
-    else if key_pressed && key_code == .BACKSPACE
-    {
-        frag := *fragments[active_fragment];
-        if frag.lines.count == 0 return;
-        line := *frag.lines[frag.line_index];
-        if frag.col_index == 0
-        {
-            if frag.line_index > 0
-            {
-                // delete the first character causing the remains of the
-                // current line to be appended to the previous line
-                prev_line := *frag.lines[frag.line_index - 1];
-                frag.col_index = prev_line.count;
-                for 0..line.count-1 array_add(prev_line, (<<line)[it]);
-                array_ordered_remove_by_index(*frag.lines, frag.line_index);
-                frag.line_index -= 1;
-            }
-        }
-        else
-        {
-            // delete a character from somewhere inside the string
-            array_ordered_remove_by_index(line, frag.col_index - 1);
-            frag.col_index = max(frag.col_index - 1, 0);
-        }
-        recalculate(frag);
-    }
-    else if key_pressed && key_code == .TAB
-    {
-        frag := *fragments[active_fragment];
-        line := *frag.lines[frag.line_index];
-        for 1..4 array_insert_at(line, #char " ", frag.col_index);
-        frag.col_index += 4;
-        recalculate(frag);
-    }
-    else if key_pressed && key_code == .ENTER
-    {
-        frag := *fragments[active_fragment];
-        frag.line_index += 1;
-        fragment_insert_line(frag, "");
-        prev_line := *frag.lines[frag.line_index - 1];
-        next_line := *frag.lines[frag.line_index];
-        for frag.col_index..prev_line.count-1 array_add(next_line, prev_line.data[it]);
-        prev_line.count -= next_line.count;
-        frag.col_index = 0;
-        recalculate(frag);
-    }
+    else if alt_pressed && key_pressed && key_code == .ARROW_UP      move_line_up();
+    else if alt_pressed && key_pressed && key_code == .ARROW_DOWN    move_line_down();
+    else if                key_pressed && key_code == .HOME          jump_to_start_of_line();
+    else if                key_pressed && key_code == .END           jump_to_end_of_line();
+    else if                key_pressed && key_code == .ENTER         split_line_at_cursor();
+    else if                key_pressed && key_code == .ARROW_UP      move_cursor_up();
+    else if                key_pressed && key_code == .ARROW_DOWN    move_cursor_down();
+    else if                key_pressed && key_code == .ARROW_LEFT    move_cursor_left();
+    else if                key_pressed && key_code == .ARROW_RIGHT   move_cursor_right();
+    else if                key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
+    else if                key_pressed && key_code == .TAB           insert_tab_as_spaces();
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
         frag := *fragments[active_fragment];
@@ -302,6 +217,123 @@ handle_fragment_input :: (using event: Input.Event)
         frag.col_index += 1;
         recalculate(frag);
     }
+}
+
+insert_tab_as_spaces :: ()
+{
+    frag := *fragments[active_fragment];
+    line := *frag.lines[frag.line_index];
+    for 1..4 array_insert_at(line, #char " ", frag.col_index);
+    frag.col_index += 4;
+    recalculate(frag);
+}
+
+move_cursor_up :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    if frag.line_index > 0 frag.line_index -= 1;
+    line := *frag.lines[frag.line_index];
+    frag.col_index = min(frag.col_index, line.count);
+}
+
+move_cursor_down :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    frag.line_index = min(frag.lines.count - 1, frag.line_index + 1);
+    line := *frag.lines[frag.line_index];
+    frag.col_index = min(frag.col_index, line.count);
+}
+
+move_cursor_left :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    if frag.col_index > 0 frag.col_index -= 1;
+}
+
+move_cursor_right :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    line := *frag.lines[frag.line_index];
+    frag.col_index = min(frag.col_index + 1, line.count);
+}
+
+delete_character_before_cursor :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    if frag.lines.count == 0 return;
+    line := *frag.lines[frag.line_index];
+    if frag.col_index == 0
+    {
+        if frag.line_index > 0
+        {
+            // delete the first character causing the remains of the
+            // current line to be appended to the previous line
+            prev_line := *frag.lines[frag.line_index - 1];
+            frag.col_index = prev_line.count;
+            for 0..line.count-1 array_add(prev_line, (<<line)[it]);
+            array_ordered_remove_by_index(*frag.lines, frag.line_index);
+            frag.line_index -= 1;
+        }
+    }
+    else
+    {
+        // delete a character from somewhere inside the string
+        array_ordered_remove_by_index(line, frag.col_index - 1);
+        frag.col_index = max(frag.col_index - 1, 0);
+    }
+    recalculate(frag);
+}
+
+move_line_up :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    if frag.line_index == 0 return;
+    Swap(*frag.lines[frag.line_index - 1], *frag.lines[frag.line_index]);
+    frag.line_index -= 1;
+}
+
+move_line_down :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    if frag.line_index == frag.lines.count - 1 return;
+    Swap(*frag.lines[frag.line_index + 1], *frag.lines[frag.line_index]);
+    frag.line_index += 1;
+}
+
+jump_to_start_of_line ::()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    frag.col_index = 0;
+}
+
+jump_to_end_of_line :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    line := *frag.lines[frag.line_index];
+    frag.col_index = line.count;
+}
+
+split_line_at_cursor :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    frag.line_index += 1;
+    fragment_insert_line(frag, "");
+    prev_line := *frag.lines[frag.line_index - 1];
+    next_line := *frag.lines[frag.line_index];
+    for frag.col_index..prev_line.count-1 array_add(next_line, prev_line.data[it]);
+    prev_line.count -= next_line.count;
+    frag.col_index = 0;
+    recalculate(frag);
 }
 
 new_fragment :: ()
