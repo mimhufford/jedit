@@ -207,7 +207,9 @@ handle_fragment_input :: (using event: Input.Event)
     else if                  key_pressed && key_code == .ENTER         split_line_at_cursor();
     else if                  key_pressed && key_code == .ARROW_UP      move_cursor_up();
     else if                  key_pressed && key_code == .ARROW_DOWN    move_cursor_down();
+    else if  ctrl_pressed && key_pressed && key_code == .ARROW_LEFT    move_cursor_left_to_next_whitespace();
     else if                  key_pressed && key_code == .ARROW_LEFT    move_cursor_left();
+    else if  ctrl_pressed && key_pressed && key_code == .ARROW_RIGHT   move_cursor_right_to_next_whitespace();
     else if                  key_pressed && key_code == .ARROW_RIGHT   move_cursor_right();
     else if                  key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
     else if                  key_pressed && key_code == .DELETE        delete_character_under_cursor();
@@ -267,11 +269,37 @@ move_cursor_down :: ()
     frag.col_index = min(frag.col_index, line.count);
 }
 
+move_cursor_left_to_next_whitespace :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    line := *frag.lines[frag.line_index];
+    while true
+    {
+        if frag.col_index == 0 break;
+        frag.col_index -= 1;
+        if line.data[frag.col_index] == #char " " break;
+    }
+}
+
 move_cursor_left :: ()
 {
     if active_fragment < 0 return;
     frag := *fragments[active_fragment];
     if frag.col_index > 0 frag.col_index -= 1;
+}
+
+move_cursor_right_to_next_whitespace :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    line := *frag.lines[frag.line_index];
+    while true
+    {
+        if frag.col_index == line.count break;
+        frag.col_index += 1;
+        if line.data[frag.col_index] == #char " " break;
+    }
 }
 
 move_cursor_right :: ()
