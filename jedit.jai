@@ -198,6 +198,20 @@ handle_fragment_input :: (using event: Input.Event)
         active_fragment = -1;
         mode = .CANVAS;
     }
+    else if alt_pressed && key_pressed && key_code == .ARROW_UP
+    {
+        frag := *fragments[active_fragment];
+        if frag.line_index == 0 return;
+        Swap(*frag.lines[frag.line_index - 1], *frag.lines[frag.line_index]);
+        frag.line_index -= 1;
+    }
+    else if alt_pressed && key_pressed && key_code == .ARROW_DOWN
+    {
+        frag := *fragments[active_fragment];
+        if frag.line_index == frag.lines.count - 1 return;
+        Swap(*frag.lines[frag.line_index + 1], *frag.lines[frag.line_index]);
+        frag.line_index += 1;
+    }
     else if key_pressed && key_code == .ARROW_UP
     {
         frag := *fragments[active_fragment];
