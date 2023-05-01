@@ -198,18 +198,20 @@ handle_fragment_input :: (using event: Input.Event)
         active_fragment = -1;
         mode = .CANVAS;
     }
-    else if alt_pressed && key_pressed && key_code == .ARROW_UP      move_line_up();
-    else if alt_pressed && key_pressed && key_code == .ARROW_DOWN    move_line_down();
-    else if                key_pressed && key_code == .HOME          jump_to_start_of_line();
-    else if                key_pressed && key_code == .END           jump_to_end_of_line();
-    else if                key_pressed && key_code == .ENTER         split_line_at_cursor();
-    else if                key_pressed && key_code == .ARROW_UP      move_cursor_up();
-    else if                key_pressed && key_code == .ARROW_DOWN    move_cursor_down();
-    else if                key_pressed && key_code == .ARROW_LEFT    move_cursor_left();
-    else if                key_pressed && key_code == .ARROW_RIGHT   move_cursor_right();
-    else if                key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
-    else if                key_pressed && key_code == .DELETE        delete_character_under_cursor();
-    else if                key_pressed && key_code == .TAB           insert_tab_as_spaces();
+    else if   alt_pressed && key_pressed && key_code == .ARROW_UP      move_line_up();
+    else if   alt_pressed && key_pressed && key_code == .ARROW_DOWN    move_line_down();
+    else if                  key_pressed && key_code == .HOME          jump_to_start_of_line();
+    else if                  key_pressed && key_code == .END           jump_to_end_of_line();
+    else if  ctrl_pressed && key_pressed && key_code == .ENTER         new_line_below();
+    else if shift_pressed && key_pressed && key_code == .ENTER         new_line_above();
+    else if                  key_pressed && key_code == .ENTER         split_line_at_cursor();
+    else if                  key_pressed && key_code == .ARROW_UP      move_cursor_up();
+    else if                  key_pressed && key_code == .ARROW_DOWN    move_cursor_down();
+    else if                  key_pressed && key_code == .ARROW_LEFT    move_cursor_left();
+    else if                  key_pressed && key_code == .ARROW_RIGHT   move_cursor_right();
+    else if                  key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
+    else if                  key_pressed && key_code == .DELETE        delete_character_under_cursor();
+    else if                  key_pressed && key_code == .TAB           insert_tab_as_spaces();
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
         frag := *fragments[active_fragment];
@@ -220,8 +222,26 @@ handle_fragment_input :: (using event: Input.Event)
     }
 }
 
+new_line_above :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    frag.col_index = 0;
+    fragment_insert_line(frag, "");
+}
+
+new_line_below :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    frag.line_index += 1;
+    frag.col_index = 0;
+    fragment_insert_line(frag, "");
+}
+
 insert_tab_as_spaces :: ()
 {
+    if active_fragment < 0 return;
     frag := *fragments[active_fragment];
     line := *frag.lines[frag.line_index];
     for 1..4 array_insert_at(line, #char " ", frag.col_index);
