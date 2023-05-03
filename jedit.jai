@@ -158,14 +158,14 @@ handle_command_input :: (using event: Input.Event)
 {
     if key_pressed && key_code == .ESCAPE
     {
-        command.count = 0;
         mode = .CANVAS;
+        command.count = 0;
     }
     else if key_pressed && key_code == .ENTER
     {
+        mode = .CANVAS;
         execute_command(xx command);
         command.count = 0;
-        mode = .CANVAS;
     }
     else if key_pressed && key_code == .BACKSPACE
     {
@@ -432,6 +432,26 @@ split_line_at_cursor :: ()
     prev_line.count -= next_line.count;
     frag.col_index = 0;
     recalculate(frag);
+}
+
+UNFINISHED_search :: (search: string)
+{
+    for * frag, frag_index: fragments
+    {
+        for * line, line_index: frag.lines
+        {
+            col_index := find_index_from_left(cast(string)(<<line), search);
+
+            if col_index >= 0
+            {
+                active_fragment = frag_index;
+                frag.line_index = line_index;
+                frag.col_index = col_index;
+                mode = .FRAGMENT;
+                break frag;
+            } 
+        }
+    }
 }
 
 new_fragment :: ()
