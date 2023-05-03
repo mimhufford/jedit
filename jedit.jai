@@ -216,6 +216,7 @@ handle_fragment_input :: (using event: Input.Event)
     else if                  key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
     else if                  key_pressed && key_code == .DELETE        delete_character_under_cursor();
     else if                  key_pressed && key_code == .TAB           insert_tab_as_spaces();
+    else if  ctrl_pressed && key_pressed && key_code == #char "X"      cut_line_to_clipboard();
     else if  ctrl_pressed && key_pressed && key_code == #char "C"      copy_line_to_clipboard();
     else if  ctrl_pressed && key_pressed && key_code == #char "V"      paste_from_clipboard_to_new_line_below();
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
@@ -226,6 +227,25 @@ handle_fragment_input :: (using event: Input.Event)
         frag.col_index += 1;
         recalculate(frag);
     }
+}
+
+cut_line_to_clipboard :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    line := *frag.lines[frag.line_index];
+    os_clipboard_set_text(cast(string)(<<line));
+    if frag.lines.count > 1
+    {
+        array_ordered_remove_by_index(*frag.lines, frag.line_index);
+        frag.line_index = min(frag.line_index, frag.lines.count - 1);
+    }
+    else
+    {
+        line.count = 0;
+        frag.col_index = 0;
+    }
+    recalculate(frag);
 }
 
 copy_line_to_clipboard :: ()
@@ -244,6 +264,7 @@ paste_from_clipboard_to_new_line_below :: ()
     line := *frag.lines[frag.line_index];
     data := os_clipboard_get_text();
     for 0..data.count-1 array_add(line, data[it]);
+    recalculate(frag);
 }
 
 new_line_above :: ()
