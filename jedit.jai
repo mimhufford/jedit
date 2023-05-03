@@ -33,6 +33,8 @@ main :: ()
 
     Simp.set_render_target(window);
 
+    maximise_window();
+
     set_scale(1);
     load_font();
 
@@ -595,7 +597,7 @@ load_file :: (path: string)
     frag : *Fragment;
 
     lines := split(data, "\n");
-    
+
     for file_line: lines
     {
         if starts_with(file_line, "//// FRAGMENT")
@@ -625,6 +627,14 @@ load_font :: ()
     font = Simp.get_font_at_size(".", "SourceCodePro-Regular.ttf", font_height);
     font_width = Simp.prepare_text(font, "w");
     assert(font != null);
+}
+
+maximise_window :: ()
+{
+    #if OS == .WINDOWS
+    {
+        ShowWindow(window, SW_MAXIMIZE);
+    }
 }
 
 #import "Math";
