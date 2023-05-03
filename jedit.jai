@@ -214,6 +214,8 @@ handle_fragment_input :: (using event: Input.Event)
     else if                  key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
     else if                  key_pressed && key_code == .DELETE        delete_character_under_cursor();
     else if                  key_pressed && key_code == .TAB           insert_tab_as_spaces();
+    else if  ctrl_pressed && key_pressed && key_code == #char "C"      copy_line_to_clipboard();
+    else if  ctrl_pressed && key_pressed && key_code == #char "V"      paste_from_clipboard_to_new_line_below();
     else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
     {
         frag := *fragments[active_fragment];
@@ -222,6 +224,24 @@ handle_fragment_input :: (using event: Input.Event)
         frag.col_index += 1;
         recalculate(frag);
     }
+}
+
+copy_line_to_clipboard :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    line := *frag.lines[frag.line_index];
+    os_clipboard_set_text(cast(string)(<<line));
+}
+
+paste_from_clipboard_to_new_line_below :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    new_line_below();
+    line := *frag.lines[frag.line_index];
+    data := os_clipboard_get_text();
+    for 0..data.count-1 array_add(line, data[it]);
 }
 
 new_line_above :: ()
@@ -612,6 +632,7 @@ load_font :: ()
 #import "Basic";
 #import "System";  // For get_path_of_running_executable. @Cleanup.
 #import "String";  // For path_strip_filename. @Cleanup.
+#import "Clipboard";
 #import "Window_Creation";
 Input :: #import "Input";
 Simp  :: #import "Simp";
