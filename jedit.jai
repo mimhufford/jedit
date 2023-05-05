@@ -219,11 +219,13 @@ handle_fragment_input :: (using event: Input.Event)
     else if  ctrl_pressed && key_pressed && key_code == #char "X"      cut_line_to_clipboard();
     else if  ctrl_pressed && key_pressed && key_code == #char "C"      copy_line_to_clipboard();
     else if  ctrl_pressed && key_pressed && key_code == #char "V"      paste_from_clipboard_to_new_line_below();
-    else if type == .TEXT_INPUT && utf32 >= 32 && utf32 <= 126
+    else if type == .TEXT_INPUT
     {
         frag := *fragments[active_fragment];
         line := *frag.lines[frag.line_index];
-        array_insert_at(line, cast(u8)utf32, frag.col_index);
+        byte := codepoint_index_to_byte_index(frag);
+        data := character_utf32_to_utf8(utf32);
+        for 0..data.count-1 array_insert_at(line, data[it], byte+it);
         frag.col_index += 1;
         recalculate(frag);
     }
@@ -300,7 +302,7 @@ move_cursor_up :: ()
     frag := *fragments[active_fragment];
     if frag.line_index > 0 frag.line_index -= 1;
     line := *frag.lines[frag.line_index];
-    frag.col_index = min(frag.col_index, line.count);
+    frag.col_index = min(frag.col_index, count_codepoints_in_line(line));
 }
 
 move_cursor_down :: ()
@@ -309,7 +311,7 @@ move_cursor_down :: ()
     frag := *fragments[active_fragment];
     frag.line_index = min(frag.lines.count - 1, frag.line_index + 1);
     line := *frag.lines[frag.line_index];
-    frag.col_index = min(frag.col_index, line.count);
+    frag.col_index = min(frag.col_index, count_codepoints_in_line(line));
 }
 
 move_cursor_left_to_next_whitespace :: ()
@@ -337,9 +339,10 @@ move_cursor_right_to_next_whitespace :: ()
     if active_fragment < 0 return;
     frag := *fragments[active_fragment];
     line := *frag.lines[frag.line_index];
+    last := count_codepoints_in_line(line);
     while true
     {
-        if frag.col_index == line.count break;
+        if frag.col_index == last break;
         frag.col_index += 1;
         if line.data[frag.col_index] == #char " " break;
     }
@@ -350,7 +353,7 @@ move_cursor_right :: ()
     if active_fragment < 0 return;
     frag := *fragments[active_fragment];
     line := *frag.lines[frag.line_index];
-    frag.col_index = min(frag.col_index + 1, line.count);
+    frag.col_index = min(frag.col_index + 1, count_codepoints_in_line(line));
 }
 
 delete_character_before_cursor :: ()
@@ -361,22 +364,21 @@ delete_character_before_cursor :: ()
     line := *frag.lines[frag.line_index];
     if frag.col_index == 0
     {
-        if frag.line_index > 0
-        {
-            // delete the first character causing the remains of the
-            // current line to be appended to the previous line
-            prev_line := *frag.lines[frag.line_index - 1];
-            frag.col_index = prev_line.count;
-            for 0..line.count-1 array_add(prev_line, (<<line)[it]);
-            array_ordered_remove_by_index(*frag.lines, frag.line_index);
-            frag.line_index -= 1;
-        }
+        if frag.line_index == 0 return;  // can't backspace at 0, 0
+        
+        // delete before first causing rest of line to be appended to the previous line
+        prev_line := *frag.lines[frag.line_index - 1];
+        frag.col_index = count_codepoints_in_line(prev_line);
+        for 0..line.count-1 array_add(prev_line, (<<line)[it]);
+        array_ordered_remove_by_index(*frag.lines, frag.line_index);
+        frag.line_index -= 1;
     }
     else
     {
-        // delete a character from somewhere inside the string
-        array_ordered_remove_by_index(line, frag.col_index - 1);
+        // delete from inside a line
         frag.col_index = max(frag.col_index - 1, 0);
+        byte_start, byte_count := codepoint_index_to_byte_index(frag);
+        for 0..byte_count-1 array_ordered_remove_by_index(line, byte_start);
     }
     recalculate(frag);
 }
@@ -387,23 +389,18 @@ delete_character_under_cursor :: ()
     frag := *fragments[active_fragment];
     if frag.lines.count == 0 return;
     line := *frag.lines[frag.line_index];
-    if line.count == 0 && frag.lines.count > 1
-    {
-        // delete the entire line because there's nothing left
-        array_ordered_remove_by_index(*frag.lines, frag.line_index);
-    }
-    else if line.count > 0 && frag.col_index < line.count
-    {
-        // delete from inside a line
-        array_ordered_remove_by_index(line, frag.col_index);
-        frag.col_index = min(frag.col_index, line.count);
-    }
-    else if line.count > 0 && frag.col_index == line.count && frag.line_index < frag.lines.count-1
+    if frag.col_index == line.count && frag.line_index < frag.lines.count - 1
     {
         // delete from the end of a line and append the next line's contents
         next_line := *frag.lines[frag.line_index + 1];
         for 0..next_line.count-1 array_add(line, next_line.data[it]);
         array_ordered_remove_by_index(*frag.lines, frag.line_index + 1);
+    }
+    else if line.count > 0 && frag.col_index < line.count
+    {
+        // delete from inside a line
+        byte_index, byte_count := codepoint_index_to_byte_index(frag);
+        for 1..byte_count array_ordered_remove_by_index(line, frag.col_index);
     }
     recalculate(frag);
 }
@@ -438,7 +435,7 @@ jump_to_end_of_line :: ()
     if active_fragment < 0 return;
     frag := *fragments[active_fragment];
     line := *frag.lines[frag.line_index];
-    frag.col_index = line.count;
+    frag.col_index = count_codepoints_in_line(line);
 }
 
 split_line_at_cursor :: ()
@@ -449,7 +446,10 @@ split_line_at_cursor :: ()
     fragment_insert_line(frag, "");
     prev_line := *frag.lines[frag.line_index - 1];
     next_line := *frag.lines[frag.line_index];
-    for frag.col_index..prev_line.count-1 array_add(next_line, prev_line.data[it]);
+    frag.line_index -= 1;
+    byte_index := codepoint_index_to_byte_index(frag);
+    frag.line_index += 1;
+    for byte_index..prev_line.count-1 array_add(next_line, prev_line.data[it]);
     prev_line.count -= next_line.count;
     frag.col_index = 0;
     recalculate(frag);
@@ -470,7 +470,7 @@ UNFINISHED_search :: (search: string)
                 frag.col_index = col_index;
                 mode = .FRAGMENT;
                 break frag;
-            } 
+            }
         }
     }
 }
@@ -529,7 +529,7 @@ set_scale :: (new_scale: float)
     for * fragments recalculate(it);
 }
 
-Line :: [..]u8; // @TODO: support non-ascii
+Line :: [..]u8;
 
 Fragment :: struct
 {
@@ -544,6 +544,44 @@ Fragment :: struct
     // The following variables are calculated and cached based on changes to text and center
     bot_left    : Vector2;
     top_right   : Vector2;
+}
+
+count_codepoints_in_line :: (line: *Line) -> s64
+{
+    count := 0;
+    index := 0;
+
+    while index < line.count
+    {
+        index += 1 + trailingBytesForUTF8[line.data[index]];
+        count += 1;
+    }
+
+    return count;
+}
+
+// @TODO: this can probably be rewritten just using trailingBytesForUTF8
+codepoint_index_to_byte_index :: (fragment: *Fragment) -> s64, s64
+{
+    shallow_orig := fragment.lines[fragment.line_index];
+    shallow_copy := fragment.lines[fragment.line_index];
+
+    for 0..fragment.col_index-1
+    {
+        code, result := utf8_next_character(cast(*string)(*shallow_copy));
+    }
+
+    byte_index := shallow_copy.data - shallow_orig.data;
+    byte_count := 1;
+
+    if (shallow_copy.data - (shallow_orig.data + shallow_orig.count)) != 0
+    {
+        // the cursor is over a character (i.e. not right at the end of a line)
+        // so we can safely look at it and add on how many extra bytes it has
+        byte_count += trailingBytesForUTF8[shallow_copy[0]];
+    }
+
+    return byte_index, byte_count;
 }
 
 fragment_insert_line :: (fragment: *Fragment, text: string)
@@ -683,6 +721,7 @@ maximise_window :: ()
 #import "Basic";
 #import "System";  // For get_path_of_running_executable. @Cleanup.
 #import "String";  // For path_strip_filename. @Cleanup.
+#import "Unicode";
 #import "Clipboard";
 #import "Window_Creation";
 Input :: #import "Input";
