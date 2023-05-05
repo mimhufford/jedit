@@ -400,7 +400,7 @@ delete_character_under_cursor :: ()
     {
         // delete from inside a line
         byte_index, byte_count := codepoint_index_to_byte_index(frag);
-        for 1..byte_count array_ordered_remove_by_index(line, frag.col_index);
+        for 1..byte_count array_ordered_remove_by_index(line, byte_index);
     }
     recalculate(frag);
 }
