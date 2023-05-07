@@ -611,6 +611,108 @@ recalculate :: (fragment: *Fragment)
     fragment.top_right = ui_scale * fragment.center + bg_half_dim;
 }
 
+UNFINISHED_tokenise :: (fragment: *Fragment)
+{
+    Token_Type :: enum
+    {
+        NONE; // catch-all for tokens without a colour
+        TYPE;
+        NUMBER;
+        STRING;
+        KEYWORD;
+        OPERATOR;
+        IDENTIFIER;
+    }
+
+    Token :: struct
+    {
+        type: Token_Type;
+        value: string; // not owned, pointer into fragment lines
+    }
+
+    keywords :: string.["if", "else", "ifx", "then", "while", "for", "break", "continue", "struct", "enum" ];
+    types    :: string.["int", "float", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "bool", "string" ];
+
+    tokens : [..]Token;
+
+    index := 0;
+    test :: "speed : s32 = ifx turbo then 1_094_583 else 543; name :: \"mim\";";
+
+    while true
+    {
+        if index >= test.count break;
+
+        token := array_add(*tokens);
+        token.value.data = test.data + index;
+        token.value.count = 1;
+
+        if is_letter_or_underscore(test[index])
+        {
+            index += 1;
+            while index < test.count && (is_letter_or_underscore(test[index]) || is_number(test[index]))
+            {
+                index += 1;
+                token.value.count += 1;
+            }
+
+            if array_find(keywords, token.value)   token.type = .KEYWORD;
+            else if array_find(types, token.value) token.type = .TYPE;
+            else                                   token.type = .IDENTIFIER;
+        }
+        else if is_number(test[index])
+        {
+            // TODO: this is very basic, doesn't handle 0b, 0x
+            index += 1;
+            while index < test.count && (is_number(test[index]) || test[index] == #char "_")
+            {
+                index += 1;
+                token.value.count += 1;
+            }
+
+            token.type = .NUMBER;
+        }
+        else if test[index] == #char "\""
+        {
+            // TODO: this is very basic, doesn't handle escapes
+            index += 1;
+            while index < test.count && test[index] != #char "\""
+            {
+                index += 1;
+                token.value.count += 1;
+            }
+
+            if index < test.count
+            {
+                assert(test[index] == #char "\"");
+                index += 1;
+                token.value.count += 1;
+            }
+
+            token.type = .STRING;
+        }
+        else
+        {
+            index += 1;
+        }
+    }
+
+    for tokens print("%\n", it);
+
+    is_letter_or_underscore :: (c: u8) -> bool
+    {
+        is_lower      := c >= #char "a" && c <= #char "z";
+        is_upper      := c >= #char "A" && c <= #char "Z";
+        is_underscore := c == #char "_";
+
+        return is_lower || is_upper || is_underscore;
+    }
+    
+    is_number :: (c: u8) -> bool
+    {
+        return c >= #char "0" && c <= #char "9";
+    }
+}
+
 draw_one_frame :: ()
 {
     Simp.clear_render_target(window_colour.x, window_colour.y, window_colour.z, window_colour.w);
