@@ -740,6 +740,15 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
     }
 }
 
+hex_to_vector4 :: (hex: s32) -> Vector4
+{
+    r := ((hex >> 24) & 0xFF) / 255.0;
+    g := ((hex >> 16) & 0xFF) / 255.0;
+    b := ((hex >>  8) & 0xFF) / 255.0;
+    a := ((hex >>  0) & 0xFF) / 255.0;
+    return .{r, g, b, a};
+}
+
 draw_one_frame :: ()
 {
     Simp.clear_render_target(window_colour.x, window_colour.y, window_colour.z, window_colour.w);
@@ -780,11 +789,11 @@ draw_one_frame :: ()
                width := Simp.prepare_text(font, token.value);
                // @TODO: define nice colours, put them in a data structure, make them customisable
                colour := Vector4.{1, 1, 1, 1};
-               if      token.type == .STRING  colour = .{0.0, 1.0, 0.0, 1};
-               else if token.type == .NUMBER  colour = .{0.0, 0.0, 1.0, 1};
-               else if token.type == .TYPE    colour = .{1.0, 0.0, 0.0, 1};
-               else if token.type == .COMMENT colour = .{0.7, 0.7, 0.7, 1};
-               else if token.type == .KEYWORD colour = .{1.0, 0.7, 0.7, 1};
+               if      token.type == .STRING  colour = hex_to_vector4(0xFEED6CFF);
+               else if token.type == .NUMBER  colour = hex_to_vector4(0x9E6FFEFF);
+               else if token.type == .TYPE    colour = hex_to_vector4(0x8CEDFFFF);
+               else if token.type == .COMMENT colour = hex_to_vector4(0xCCCCC6FF);
+               else if token.type == .KEYWORD colour = hex_to_vector4(0xFF5995FF);
                Simp.draw_prepared_text(font, xx text_x, xx text_y, colour);
                text_x += width;
             }
