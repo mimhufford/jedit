@@ -544,6 +544,9 @@ Fragment :: struct
     // The following variables are calculated and cached based on changes to text and center
     bot_left    : Vector2;
     top_right   : Vector2;
+
+    // Calculated and cached whenever text changes
+    tokens : [..][..]Token;
 }
 
 count_codepoints_in_line :: (line: *Line) -> s64
@@ -612,42 +615,46 @@ recalculate :: (fragment: *Fragment, do_tokenisation := true)
     if do_tokenisation UNFINISHED_tokenise(fragment);
 }
 
+Token_Type :: enum
+{
+    NONE; // catch-all for tokens without a colour
+    TYPE;
+    NUMBER;
+    STRING;
+    KEYWORD;
+    COMMENT;
+    OPERATOR;
+    IDENTIFIER;
+}
+
+Token :: struct
+{
+    type: Token_Type;
+    value: string; // not owned, pointer into fragment lines
+    index: s64;
+}
+
 UNFINISHED_tokenise :: (fragment: *Fragment)
 {
-    Token_Type :: enum
-    {
-        NONE; // catch-all for tokens without a colour
-        TYPE;
-        NUMBER;
-        STRING;
-        KEYWORD;
-        COMMENT;
-        OPERATOR;
-        IDENTIFIER;
-    }
-
-    Token :: struct
-    {
-        type: Token_Type;
-        value: string; // not owned, pointer into fragment lines
-    }
-
-    keywords :: string.["if", "else", "ifx", "then", "while", "for", "break", "continue", "struct", "enum" ];
+    keywords :: string.["if", "else", "ifx", "then", "while", "for", "break", "continue", "return", "struct", "enum" ];
     types    :: string.["int", "float", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "bool", "string" ];
 
-    tokens : [..]Token;
+    for * fragment.tokens array_reset(it);
+    array_reset(*fragment.tokens);
 
     for line: fragment.lines
     {
         index := 0;
+        tokens := array_add(*fragment.tokens);
 
         while true
         {
             if index >= line.count break;
 
-            token := array_add(*tokens);
+            token := array_add(tokens);
             token.value.data = line.data + index;
             token.value.count = 1;
+            token.index = index;
 
             if is_letter_or_underscore(line[index])
             {
@@ -718,8 +725,6 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
         }
     }
 
-    for tokens print("%\n", it);
-
     is_letter_or_underscore :: (c: u8) -> bool
     {
         is_lower      := c >= #char "a" && c <= #char "z";
@@ -765,11 +770,24 @@ draw_one_frame :: ()
             Simp.immediate_quad(left, top, right, bottom, colour);
         }
 
-        for line, line_index: frag.lines
+        for tokens, line_index: frag.tokens
         {
             text_x := frag.bot_left.x + font_width + ui_offset.x;
             text_y := frag.top_right.y - ((line_index + 1) * font_height) - font_height * 0.25 + ui_offset.y;
-            Simp.draw_text(font, xx text_x, xx text_y, xx line);
+
+            for token: tokens
+            {
+               width := Simp.prepare_text(font, token.value);
+               // @TODO: define nice colours, put them in a data structure, make them customisable
+               colour := Vector4.{1, 1, 1, 1};
+               if      token.type == .STRING  colour = .{0.0, 1.0, 0.0, 1};
+               else if token.type == .NUMBER  colour = .{0.0, 0.0, 1.0, 1};
+               else if token.type == .TYPE    colour = .{1.0, 0.0, 0.0, 1};
+               else if token.type == .COMMENT colour = .{0.7, 0.7, 0.7, 1};
+               else if token.type == .KEYWORD colour = .{1.0, 0.7, 0.7, 1};
+               Simp.draw_prepared_text(font, xx text_x, xx text_y, colour);
+               text_x += width;
+            }
         }
     }
 
