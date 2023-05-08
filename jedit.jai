@@ -143,7 +143,7 @@ update_canvas :: ()
             y = xx (y - ui_offset.y);
             fragments[active_fragment].center.x = active_fragment_click_offset.x + x / ui_scale;
             fragments[active_fragment].center.y = active_fragment_click_offset.y + y / ui_scale;
-            recalculate(*fragments[active_fragment]);
+            recalculate(*fragments[active_fragment], do_tokenisation = false);
         }
         else
         {
@@ -526,7 +526,7 @@ set_scale :: (new_scale: float)
 {
     ui_scale = new_scale;
     load_font();
-    for * fragments recalculate(it);
+    for * fragments recalculate(it, do_tokenisation = false);
 }
 
 Line :: [..]u8;
@@ -600,7 +600,7 @@ fragment_append_line :: (fragment: *Fragment, text: string)
     recalculate(fragment);
 }
 
-recalculate :: (fragment: *Fragment)
+recalculate :: (fragment: *Fragment, do_tokenisation := true)
 {
     text_width := 0;
     for fragment.lines text_width = max(text_width, Simp.prepare_text(font, xx it));
@@ -609,6 +609,7 @@ recalculate :: (fragment: *Fragment)
     bg_half_dim := Vector2.{xx bg_half_width, xx bg_half_height};
     fragment.bot_left  = ui_scale * fragment.center - bg_half_dim;
     fragment.top_right = ui_scale * fragment.center + bg_half_dim;
+    if do_tokenisation UNFINISHED_tokenise(fragment);
 }
 
 UNFINISHED_tokenise :: (fragment: *Fragment)
@@ -620,6 +621,7 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
         NUMBER;
         STRING;
         KEYWORD;
+        COMMENT;
         OPERATOR;
         IDENTIFIER;
     }
@@ -635,64 +637,84 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
 
     tokens : [..]Token;
 
-    index := 0;
-    test :: "speed : s32 = ifx turbo then 1_094_583 else 543; name :: \"mim\";";
-
-    while true
+    for line: fragment.lines
     {
-        if index >= test.count break;
+        index := 0;
 
-        token := array_add(*tokens);
-        token.value.data = test.data + index;
-        token.value.count = 1;
-
-        if is_letter_or_underscore(test[index])
+        while true
         {
-            index += 1;
-            while index < test.count && (is_letter_or_underscore(test[index]) || is_number(test[index]))
+            if index >= line.count break;
+
+            token := array_add(*tokens);
+            token.value.data = line.data + index;
+            token.value.count = 1;
+
+            if is_letter_or_underscore(line[index])
             {
                 index += 1;
-                token.value.count += 1;
-            }
+                while index < line.count && (is_letter_or_underscore(line[index]) || is_number(line[index]))
+                {
+                    index += 1;
+                    token.value.count += 1;
+                }
 
-            if array_find(keywords, token.value)   token.type = .KEYWORD;
-            else if array_find(types, token.value) token.type = .TYPE;
-            else                                   token.type = .IDENTIFIER;
-        }
-        else if is_number(test[index])
-        {
-            // TODO: this is very basic, doesn't handle 0b, 0x
-            index += 1;
-            while index < test.count && (is_number(test[index]) || test[index] == #char "_")
+                if array_find(keywords, token.value)   token.type = .KEYWORD;
+                else if array_find(types, token.value) token.type = .TYPE;
+                else                                   token.type = .IDENTIFIER;
+            }
+            else if is_number(line[index])
+            {
+                // TODO: this is very basic, doesn't handle 0b, 0x
+                index += 1;
+                while index < line.count && (is_number(line[index]) || line[index] == #char "_")
+                {
+                    index += 1;
+                    token.value.count += 1;
+                }
+
+                token.type = .NUMBER;
+            }
+            else if line[index] == #char "\""
+            {
+                // TODO: this is very basic, doesn't handle escapes
+                index += 1;
+                while index < line.count && line[index] != #char "\""
+                {
+                    index += 1;
+                    token.value.count += 1;
+                }
+
+                if index < line.count
+                {
+                    assert(line[index] == #char "\"");
+                    index += 1;
+                    token.value.count += 1;
+                }
+
+                token.type = .STRING;
+            }
+            else if line[index] == #char "/"
             {
                 index += 1;
-                token.value.count += 1;
-            }
 
-            token.type = .NUMBER;
-        }
-        else if test[index] == #char "\""
-        {
-            // TODO: this is very basic, doesn't handle escapes
-            index += 1;
-            while index < test.count && test[index] != #char "\""
+                // single line comments
+                if index < line.count && line[index] == #char "/"
+                {
+                    index += 1;
+                    token.value.count += 1;
+                    token.type = .COMMENT;
+
+                    while index < line.count
+                    {
+                        index += 1;
+                        token.value.count += 1;
+                    }
+                }
+            }
+            else
             {
                 index += 1;
-                token.value.count += 1;
             }
-
-            if index < test.count
-            {
-                assert(test[index] == #char "\"");
-                index += 1;
-                token.value.count += 1;
-            }
-
-            token.type = .STRING;
-        }
-        else
-        {
-            index += 1;
         }
     }
 
