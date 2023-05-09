@@ -787,6 +787,12 @@ draw_one_frame :: ()
         bl := frag.bot_left;   bl += ui_offset;
         tr := frag.top_right;  tr += ui_offset;
 
+        // skip rendering fragment if it's not within viewport
+        if (tr.x <= 0) continue;
+        if (tr.y <= 0) continue;
+        if (bl.x >= cast(float)window_width) continue;
+        if (bl.y >= cast(float)window_height) continue;
+
         Simp.set_shader_for_color();
 
         // draw 1 pixel border
