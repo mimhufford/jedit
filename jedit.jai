@@ -216,6 +216,7 @@ handle_fragment_input :: (using event: Input.Event)
     else if                  key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
     else if                  key_pressed && key_code == .DELETE        delete_character_under_cursor();
     else if                  key_pressed && key_code == .TAB           insert_tab_as_spaces();
+    else if  ctrl_pressed && key_pressed && key_code == #char "/"      toggle_line_comment();
     else if  ctrl_pressed && key_pressed && key_code == #char "X"      cut_line_to_clipboard();
     else if  ctrl_pressed && key_pressed && key_code == #char "C"      copy_line_to_clipboard();
     else if  ctrl_pressed && key_pressed && key_code == #char "V"      paste_from_clipboard_to_new_line_below();
@@ -227,6 +228,28 @@ handle_fragment_input :: (using event: Input.Event)
         data := character_utf32_to_utf8(utf32);
         for 0..data.count-1 array_insert_at(line, data[it], byte+it);
         frag.col_index += 1;
+        recalculate(frag);
+    }
+}
+
+toggle_line_comment :: ()
+{
+    if active_fragment < 0 return;
+    frag := *fragments[active_fragment];
+    line := *frag.lines[frag.line_index];
+
+    if line.count >= 2 && line.data[0] == #char "/" && line.data[1] == #char "/"
+    {
+        // uncomment the line
+        for 1..2 array_ordered_remove_by_index(line, 0);
+        frag.col_index = max(frag.col_index - 2, 0);
+        recalculate(frag);
+    }
+    else
+    {
+        // comment the line
+        for 1..2 array_insert_at(line, #char "/", 0);
+        frag.col_index = min(frag.col_index + 2, count_codepoints_in_line(line));
         recalculate(frag);
     }
 }
