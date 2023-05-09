@@ -435,6 +435,7 @@ move_line_up :: ()
     if frag.line_index == 0 return;
     Swap(*frag.lines[frag.line_index - 1], *frag.lines[frag.line_index]);
     frag.line_index -= 1;
+    recalculate(frag);
 }
 
 move_line_down :: ()
@@ -444,6 +445,7 @@ move_line_down :: ()
     if frag.line_index == frag.lines.count - 1 return;
     Swap(*frag.lines[frag.line_index + 1], *frag.lines[frag.line_index]);
     frag.line_index += 1;
+    recalculate(frag);
 }
 
 jump_to_start_of_line ::()
