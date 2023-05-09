@@ -674,10 +674,14 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
         {
             if index >= line.count break;
 
+            // Even though non-ascii characters aren't legal outside of string (I think...)
+            // they need to be parsed as a single token so they don't get rendered seperately.
+            // That's why the following includes the trailingBytesForUTF8 stuff.
             token := array_add(tokens);
             token.value.data = line.data + index;
-            token.value.count = 1;
+            token.value.count = 1 + trailingBytesForUTF8[<<token.value.data];
             token.index = index;
+            index += trailingBytesForUTF8[<<token.value.data];
 
             if is_letter_or_underscore(line[index])
             {
