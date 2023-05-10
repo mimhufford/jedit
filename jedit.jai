@@ -84,50 +84,48 @@ handle_canvas_input :: (using event: Input.Event)
 {
     if type != .KEYBOARD return;
 
-    if key_pressed && key_code == .ESCAPE window_wants_to_quit = true;
+    if       key_pressed && key_code == .ESCAPE                    window_wants_to_quit = true;
+    else if  key_pressed &&  ctrl_pressed && key_code == #char "+" adjust_scale(+1);
+    else if  key_pressed &&  ctrl_pressed && key_code == #char "-" adjust_scale(-1);
+    else if  key_pressed &&  ctrl_pressed && key_code == #char "0" set_scale(1);
+    else if  key_pressed &&  ctrl_pressed && key_code == #char "S" save_as_jai_file();
+    else if  key_pressed &&  ctrl_pressed && key_code == #char "N" new_fragment();
+    else if  key_pressed &&  ctrl_pressed && key_code == #char " " mode = .COMMAND;
+    else if  key_pressed && !ctrl_pressed && key_code == #char " " switch_to_fragment_mode();
+    else if  key_pressed && key_code == .MOUSE_BUTTON_LEFT         maybe_set_active_fragment();
+    else if !key_pressed && key_code == .MOUSE_BUTTON_LEFT         left_click_down = false;
+}
 
-    if key_pressed && ctrl_pressed && key_code == #char "+" adjust_scale(+1);
-    if key_pressed && ctrl_pressed && key_code == #char "-" adjust_scale(-1);
-    if key_pressed && ctrl_pressed && key_code == #char "0" set_scale(1);
+maybe_set_active_fragment :: ()
+{
+    active_fragment = -1;
+    ui_offset_drag_start_pos = ui_offset;
 
-    if key_pressed && ctrl_pressed && key_code == #char "S" save_as_jai_file();
-
-    if key_pressed && ctrl_pressed && key_code == #char "N" new_fragment();
-
-    if key_pressed && ctrl_pressed && key_code == #char " " mode = .COMMAND;
-
-    if key_pressed && !ctrl_pressed && key_code == #char " "
+    x, y := get_mouse_pointer_position(window, true);
+    left_click_down_start_pos.x = xx x;
+    left_click_down_start_pos.y = xx y;
+    x = xx (x - ui_offset.x);
+    y = xx (y - ui_offset.y);
+    left_click_down = true;
+    for * fragments
     {
-        if active_fragment >= 0
-        {
-            mode = .FRAGMENT;
-        }
+        if x < cast(int) it.bot_left.x continue;
+        if x > cast(int) it.top_right.x continue;
+        if y < cast(int) it.bot_left.y continue;
+        if y > cast(int) it.top_right.y continue;
+        active_fragment = it_index;
+        active_fragment_click_offset.x = it.center.x - (x / ui_scale);
+        active_fragment_click_offset.y = it.center.y - (y / ui_scale);
+        mode = .CANVAS;
+        break;
     }
+}
 
-    if key_pressed && key_code == .MOUSE_BUTTON_LEFT
-    {
-        active_fragment = -1;
-        ui_offset_drag_start_pos = ui_offset;
+switch_to_fragment_mode :: ()
+{
+    if active_fragment < 0 return;
 
-        x, y := get_mouse_pointer_position(window, true);
-        left_click_down_start_pos.x = xx x;
-        left_click_down_start_pos.y = xx y;
-        x = xx (x - ui_offset.x);
-        y = xx (y - ui_offset.y);
-        left_click_down = true;
-        for fragments
-        {
-            if x < cast(int) it.bot_left.x continue;
-            if x > cast(int) it.top_right.x continue;
-            if y < cast(int) it.bot_left.y continue;
-            if y > cast(int) it.top_right.y continue;
-            active_fragment = it_index;
-            active_fragment_click_offset.x = it.center.x - (x / ui_scale);
-            active_fragment_click_offset.y = it.center.y - (y / ui_scale);
-        }
-    }
-
-    if !key_pressed && key_code == .MOUSE_BUTTON_LEFT left_click_down = false;
+    mode = .FRAGMENT;
 }
 
 update_canvas :: ()
@@ -200,26 +198,28 @@ handle_fragment_input :: (using event: Input.Event)
         active_fragment = -1;
         mode = .CANVAS;
     }
-    else if   alt_pressed && key_pressed && key_code == .ARROW_UP      move_line_up();
-    else if   alt_pressed && key_pressed && key_code == .ARROW_DOWN    move_line_down();
-    else if                  key_pressed && key_code == .HOME          jump_to_start_of_line();
-    else if                  key_pressed && key_code == .END           jump_to_end_of_line();
-    else if  ctrl_pressed && key_pressed && key_code == .ENTER         new_line_below();
-    else if shift_pressed && key_pressed && key_code == .ENTER         new_line_above();
-    else if                  key_pressed && key_code == .ENTER         split_line_at_cursor();
-    else if                  key_pressed && key_code == .ARROW_UP      move_cursor_up();
-    else if                  key_pressed && key_code == .ARROW_DOWN    move_cursor_down();
-    else if  ctrl_pressed && key_pressed && key_code == .ARROW_LEFT    move_cursor_left_to_next_whitespace();
-    else if                  key_pressed && key_code == .ARROW_LEFT    move_cursor_left();
-    else if  ctrl_pressed && key_pressed && key_code == .ARROW_RIGHT   move_cursor_right_to_next_whitespace();
-    else if                  key_pressed && key_code == .ARROW_RIGHT   move_cursor_right();
-    else if                  key_pressed && key_code == .BACKSPACE     delete_character_before_cursor();
-    else if                  key_pressed && key_code == .DELETE        delete_character_under_cursor();
-    else if                  key_pressed && key_code == .TAB           insert_tab_as_spaces();
-    else if  ctrl_pressed && key_pressed && key_code == #char "/"      toggle_line_comment();
-    else if  ctrl_pressed && key_pressed && key_code == #char "X"      cut_line_to_clipboard();
-    else if  ctrl_pressed && key_pressed && key_code == #char "C"      copy_line_to_clipboard();
-    else if  ctrl_pressed && key_pressed && key_code == #char "V"      paste_from_clipboard_to_new_line_below();
+    else if   alt_pressed && key_pressed && key_code == .ARROW_UP           move_line_up();
+    else if   alt_pressed && key_pressed && key_code == .ARROW_DOWN         move_line_down();
+    else if                  key_pressed && key_code == .HOME               jump_to_start_of_line();
+    else if                  key_pressed && key_code == .END                jump_to_end_of_line();
+    else if  ctrl_pressed && key_pressed && key_code == .ENTER              new_line_below();
+    else if shift_pressed && key_pressed && key_code == .ENTER              new_line_above();
+    else if                  key_pressed && key_code == .ENTER              split_line_at_cursor();
+    else if                  key_pressed && key_code == .ARROW_UP           move_cursor_up();
+    else if                  key_pressed && key_code == .ARROW_DOWN         move_cursor_down();
+    else if  ctrl_pressed && key_pressed && key_code == .ARROW_LEFT         move_cursor_left_to_next_whitespace();
+    else if                  key_pressed && key_code == .ARROW_LEFT         move_cursor_left();
+    else if  ctrl_pressed && key_pressed && key_code == .ARROW_RIGHT        move_cursor_right_to_next_whitespace();
+    else if                  key_pressed && key_code == .ARROW_RIGHT        move_cursor_right();
+    else if                  key_pressed && key_code == .BACKSPACE          delete_character_before_cursor();
+    else if                  key_pressed && key_code == .DELETE             delete_character_under_cursor();
+    else if                  key_pressed && key_code == .TAB                insert_tab_as_spaces();
+    else if  ctrl_pressed && key_pressed && key_code == #char "/"           toggle_line_comment();
+    else if  ctrl_pressed && key_pressed && key_code == #char "X"           cut_line_to_clipboard();
+    else if  ctrl_pressed && key_pressed && key_code == #char "C"           copy_line_to_clipboard();
+    else if  ctrl_pressed && key_pressed && key_code == #char "V"           paste_from_clipboard_to_new_line_below();
+    else if                  key_pressed && key_code == .MOUSE_BUTTON_LEFT  maybe_set_active_fragment();
+    else if                 !key_pressed && key_code == .MOUSE_BUTTON_LEFT  left_click_down = false;
     else if type == .TEXT_INPUT
     {
         frag := *fragments[active_fragment];
