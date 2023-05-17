@@ -16,8 +16,11 @@ font_width  := 0; // set programmatically when changing scale
 active_fragment_click_offset : Vector2; // used when dragging a fragment around to avoid snapping to its center
 active_fragment := -1;
 fragments : [..]Fragment;
-mode : enum { CANVAS; COMMAND; FRAGMENT; } = .CANVAS;
+mode := Mode.CANVAS;
+next_mode := Mode.CANVAS;
 command : Line;
+
+Mode :: enum { CANVAS; COMMAND; FRAGMENT; };
 
 main :: ()
 {
@@ -61,6 +64,8 @@ main :: ()
 
         draw_one_frame();
 
+        mode = next_mode;
+
         sleep_milliseconds(10);
         reset_temporary_storage();
     }
@@ -90,7 +95,7 @@ handle_canvas_input :: (using event: Input.Event)
     else if  key_pressed &&  ctrl_pressed && key_code == #char "0" set_scale(1);
     else if  key_pressed &&  ctrl_pressed && key_code == #char "S" save_as_jai_file();
     else if  key_pressed &&  ctrl_pressed && key_code == #char "N" new_fragment();
-    else if  key_pressed &&  ctrl_pressed && key_code == #char " " mode = .COMMAND;
+    else if  key_pressed &&  ctrl_pressed && key_code == #char " " next_mode = .COMMAND;
     else if  key_pressed && !ctrl_pressed && key_code == #char " " switch_to_fragment_mode();
     else if  key_pressed && key_code == .MOUSE_BUTTON_LEFT         maybe_set_active_fragment();
     else if !key_pressed && key_code == .MOUSE_BUTTON_LEFT         left_click_down = false;
@@ -116,7 +121,7 @@ maybe_set_active_fragment :: ()
         active_fragment = it_index;
         active_fragment_click_offset.x = it.center.x - (x / ui_scale);
         active_fragment_click_offset.y = it.center.y - (y / ui_scale);
-        mode = .CANVAS;
+        next_mode = .CANVAS;
         break;
     }
 }
@@ -125,7 +130,7 @@ switch_to_fragment_mode :: ()
 {
     if active_fragment < 0 return;
 
-    mode = .FRAGMENT;
+    next_mode = .FRAGMENT;
 }
 
 update_canvas :: ()
@@ -156,12 +161,12 @@ handle_command_input :: (using event: Input.Event)
 {
     if key_pressed && key_code == .ESCAPE
     {
-        mode = .CANVAS;
+        next_mode = .CANVAS;
         command.count = 0;
     }
     else if key_pressed && key_code == .ENTER
     {
-        mode = .CANVAS;
+        next_mode = .CANVAS;
         execute_command(xx command);
         command.count = 0;
     }
@@ -196,7 +201,7 @@ handle_fragment_input :: (using event: Input.Event)
     if key_pressed && key_code == .ESCAPE
     {
         active_fragment = -1;
-        mode = .CANVAS;
+        next_mode = .CANVAS;
     }
     else if   alt_pressed && key_pressed && key_code == .ARROW_UP           move_line_up();
     else if   alt_pressed && key_pressed && key_code == .ARROW_DOWN         move_line_down();
@@ -493,7 +498,7 @@ UNFINISHED_search :: (search: string)
                 active_fragment = frag_index;
                 frag.line_index = line_index;
                 frag.col_index = col_index;
-                mode = .FRAGMENT;
+                next_mode = .FRAGMENT;
                 break frag;
             }
         }
