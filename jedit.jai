@@ -227,6 +227,7 @@ handle_fragment_input :: (using event: Input.Event)
     else if                 !key_pressed && key_code == .MOUSE_BUTTON_LEFT  left_click_down = false;
     else if type == .TEXT_INPUT
     {
+        if utf32 == 127 return; // Ctrl + Backspace produces TEXT_INPUT 127 (DEL), ignore
         frag := *fragments[active_fragment];
         line := *frag.lines[frag.line_index];
         byte := codepoint_index_to_byte_index(frag);
