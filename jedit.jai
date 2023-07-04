@@ -667,6 +667,20 @@ Token :: struct
 
 UNFINISHED_tokenise :: (fragment: *Fragment)
 {
+    is_letter_or_underscore :: (c: u8) -> bool
+    {
+        is_lower      := c >= #char "a" && c <= #char "z";
+        is_upper      := c >= #char "A" && c <= #char "Z";
+        is_underscore := c == #char "_";
+
+        return is_lower || is_upper || is_underscore;
+    }
+    
+    is_number :: (c: u8) -> bool
+    {
+        return c >= #char "0" && c <= #char "9";
+    }
+
     keywords :: string.["if", "else", "ifx", "then", "while", "for", "break", "continue", "return", "struct", "enum" ];
     types    :: string.["int", "float", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "bool", "string" ];
 
@@ -758,20 +772,6 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
                 index += 1;
             }
         }
-    }
-
-    is_letter_or_underscore :: (c: u8) -> bool
-    {
-        is_lower      := c >= #char "a" && c <= #char "z";
-        is_upper      := c >= #char "A" && c <= #char "Z";
-        is_underscore := c == #char "_";
-
-        return is_lower || is_upper || is_underscore;
-    }
-    
-    is_number :: (c: u8) -> bool
-    {
-        return c >= #char "0" && c <= #char "9";
     }
 }
 
