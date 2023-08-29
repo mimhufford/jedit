@@ -16,6 +16,7 @@ font_width  := 0; // set programmatically when changing scale
 active_fragment_click_offset : Vector2; // used when dragging a fragment around to avoid snapping to its center
 active_fragment := -1;
 fragments : [..]Fragment;
+callers_and_callees_need_recalculating := false;
 mode := Mode.CANVAS;
 next_mode := Mode.CANVAS;
 command : Line;
@@ -61,6 +62,8 @@ main :: ()
         }
 
         update_canvas();
+
+        calculate_caller_and_callee_relationships();
 
         draw_one_frame();
 
@@ -193,6 +196,30 @@ execute_command :: (command: string)
     {
         case "reset scale";   set_scale(1);
         case "reset offset";  set_ui_offset(0, 0);
+    }
+}
+
+calculate_caller_and_callee_relationships :: ()
+{
+    // @TODO: currently all fragments are being recalculated which is more work than required
+    //        if we keep track of which fragment caused an update we can be cleverer about this
+
+    if !callers_and_callees_need_recalculating return;
+
+    callers_and_callees_need_recalculating = false;
+
+    for * frag: fragments {
+        array_reset(*frag.calls);
+        for line: frag.tokens {
+            for token: line {
+                if token.type != .IDENTIFIER continue;
+                for * other_frag: fragments {
+                    if frag == other_frag continue;
+                    if token.value != other_frag.procedure_name continue;
+                    array_add_if_unique(*frag.calls, other_frag);
+                }
+            }
+        }
     }
 }
 
@@ -578,6 +605,9 @@ Fragment :: struct
 
     // Calculated and cached whenever text changes
     tokens : [..][..]Token;
+    procedure_name : string;
+
+    calls : [..]*Fragment;
 }
 
 count_codepoints_in_line :: (line: *Line) -> s64
@@ -643,7 +673,11 @@ recalculate :: (fragment: *Fragment, do_tokenisation := true)
     bg_half_dim := Vector2.{xx bg_half_width, xx bg_half_height};
     fragment.bot_left  = ui_scale * fragment.center - bg_half_dim;
     fragment.top_right = ui_scale * fragment.center + bg_half_dim;
-    if do_tokenisation UNFINISHED_tokenise(fragment);
+    if do_tokenisation
+    {
+        callers_and_callees_need_recalculating = true;
+        UNFINISHED_tokenise(fragment);
+    }
 }
 
 Token_Type :: enum
@@ -773,6 +807,18 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
             }
         }
     }
+
+    // Check if fragment is a procedure and set name
+    fragment.procedure_name = "";
+    if fragment.tokens.count == 0 return;
+    if fragment.tokens[0].count < 6 return;
+    if fragment.tokens[0][0].type != .IDENTIFIER return;
+    if fragment.tokens[0][1].value != " " return;
+    if fragment.tokens[0][2].value != ":" return;
+    if fragment.tokens[0][3].value != ":" return;
+    if fragment.tokens[0][4].value != " " return;
+    if fragment.tokens[0][5].value != "(" return;
+    fragment.procedure_name = fragment.tokens[0][0].value;
 }
 
 hex_to_vector4 :: (hex: s32) -> Vector4
@@ -800,6 +846,15 @@ draw_one_frame :: ()
         if (bl.y >= cast(float)window_height) continue;
 
         Simp.set_shader_for_color();
+
+        for call: frag.calls {
+            // @TODO: calculate a line based on angle between fragments
+            p1 := frag.center - .{1,1} + ui_offset;
+            p2 := frag.center + .{1,1} + ui_offset;
+            p3 := call.center - .{1,1} + ui_offset;
+            p4 := call.center + .{1,1} + ui_offset;
+            Simp.immediate_quad(p1, p2, p3, p4);
+        }
 
         // draw 1 pixel border
         border_colour := Vector4.{0, 0, 0, 1};
