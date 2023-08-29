@@ -841,7 +841,7 @@ draw_one_frame :: ()
         for call: frag.calls
         {
             dir := unit_vector(call.center - frag.center);
-            rot := Vector2.{dir.y, -dir.x} * 2;
+            rot := Vector2.{dir.y, -dir.x} * 2 * ui_scale;
             p1 := ui_scale * frag.center - rot + ui_offset;
             p2 := ui_scale * frag.center + rot + ui_offset;
             p3 := ui_scale * call.center + rot + ui_offset;
