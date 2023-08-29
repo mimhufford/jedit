@@ -834,6 +834,24 @@ draw_one_frame :: ()
 {
     Simp.clear_render_target(window_colour.x, window_colour.y, window_colour.z, window_colour.w);
 
+    Simp.set_shader_for_color();
+
+    for frag, frag_index: fragments
+    {
+        for call: frag.calls
+        {
+            dir := unit_vector(call.center - frag.center);
+            rot := Vector2.{dir.y, -dir.x} * 2;
+            p1 := frag.center - rot + ui_offset;
+            p2 := frag.center + rot + ui_offset;
+            p3 := call.center + rot + ui_offset;
+            p4 := call.center - rot + ui_offset;
+            c1 := Vector4.{0.5,0.5,1,1};
+            c2 := Vector4.{0.5,1,0.5,1};
+            Simp.immediate_quad(p1, p2, p3, p4, c1, c1, c2, c2);
+        }
+    }
+
     for frag, frag_index: fragments
     {
         bl := frag.bot_left;   bl += ui_offset;
@@ -846,18 +864,6 @@ draw_one_frame :: ()
         if (bl.y >= cast(float)window_height) continue;
 
         Simp.set_shader_for_color();
-
-        for call: frag.calls {
-            dir := unit_vector(call.center - frag.center);
-            rot := Vector2.{dir.y, -dir.x} * 2;
-            p1 := frag.center - rot + ui_offset;
-            p2 := frag.center + rot + ui_offset;
-            p3 := call.center + rot + ui_offset;
-            p4 := call.center - rot + ui_offset;
-            c1 := Vector4.{0.5,0.5,1,1};
-            c2 := Vector4.{0.5,1,0.5,1};
-            Simp.immediate_quad(p1, p2, p3, p4, c1, c1, c2, c2);
-        }
 
         // draw 1 pixel border
         border_colour := Vector4.{0, 0, 0, 1};
