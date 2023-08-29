@@ -842,10 +842,10 @@ draw_one_frame :: ()
         {
             dir := unit_vector(call.center - frag.center);
             rot := Vector2.{dir.y, -dir.x} * 2;
-            p1 := frag.center - rot + ui_offset;
-            p2 := frag.center + rot + ui_offset;
-            p3 := call.center + rot + ui_offset;
-            p4 := call.center - rot + ui_offset;
+            p1 := ui_scale * frag.center - rot + ui_offset;
+            p2 := ui_scale * frag.center + rot + ui_offset;
+            p3 := ui_scale * call.center + rot + ui_offset;
+            p4 := ui_scale * call.center - rot + ui_offset;
             c1 := Vector4.{0.5,0.5,1,1};
             c2 := Vector4.{0.5,1,0.5,1};
             Simp.immediate_quad(p1, p2, p3, p4, c1, c1, c2, c2);
