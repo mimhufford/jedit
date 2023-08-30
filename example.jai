@@ -4,10 +4,13 @@ main :: ()
     set_scale(1);
     load_font();
 }
-//// FRAGMENT 954 286 ////
-adjust_frag_index :: (delta: s64)
+//// FRAGMENT 490 275 ////
+Fragment_Type :: enum
 {
-    active_fragment = (active_fragment + delta + fragments.count) % fragments.count;
+    .UNKNOWN;
+    .PROCEDURE;
+    .STRUCT;
+    .ENUM;
 }
 //// FRAGMENT 1393 525 ////
 set_ui_offset :: (x: float, y: float)
@@ -34,3 +37,15 @@ load_font :: ()
 {
     // load font at current scale
 }
+//// FRAGMENT 928 269 ////
+Colour :: struct
+{
+    r: float;
+    g: float;
+    b: float;
+}
+//// FRAGMENT 1359 310 ////
+WHITE   :: Colour.{1, 1, 1};
+BLACK   :: Colour.{0, 0, 0};
+ORANGE  :: Colour.{1, 1, 0};
+MAGENTA :: Colour.{1, 0, 1};

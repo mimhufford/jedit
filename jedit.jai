@@ -208,15 +208,16 @@ calculate_caller_and_callee_relationships :: ()
 
     callers_and_callees_need_recalculating = false;
 
-    for * frag: fragments {
-        array_reset(*frag.calls);
-        for line: frag.tokens {
+    for * caller: fragments {
+        array_reset(*caller.calls);
+        for line: caller.tokens {
             for token: line {
                 if token.type != .IDENTIFIER continue;
-                for * other_frag: fragments {
-                    if frag == other_frag continue;
-                    if token.value != other_frag.procedure_name continue;
-                    array_add_if_unique(*frag.calls, other_frag);
+                for * callee: fragments {
+                    if caller == callee continue;
+                    if callee.type != .PROCEDURE continue;
+                    if token.value != callee.identifier continue;
+                    array_add_if_unique(*caller.calls, callee);
                 }
             }
         }
@@ -587,27 +588,34 @@ set_scale :: (new_scale: float)
     for * fragments recalculate(it, do_tokenisation = false);
 }
 
+Fragment_Type :: enum {
+    UNKNOWN;
+    PROCEDURE;
+    STRUCT;
+    ENUM;
+}
+
 Line :: [..]u8;
 
 Fragment :: struct
 {
     lines  : [..]Line;
     center : Vector2;
-    colour := Vector4.{.2, .2, .2, 1};
 
     // Fragment edit mode state variables
     line_index := 0;
     col_index  := 0;
 
-    // The following variables are calculated and cached based on changes to text and center
+    // The following variables are calculated and cached whenever text or position changes
     bot_left    : Vector2;
     top_right   : Vector2;
 
-    // Calculated and cached whenever text changes
+    // The following variables are calculated and cached whenever text changes
     tokens : [..][..]Token;
-    procedure_name : string;
-
+    identifier : string;
     calls : [..]*Fragment;
+    type := Fragment_Type.UNKNOWN;
+    colour := Vector4.{.2, .2, .2, 1};
 }
 
 count_codepoints_in_line :: (line: *Line) -> s64
@@ -715,7 +723,7 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
         return c >= #char "0" && c <= #char "9";
     }
 
-    keywords :: string.["if", "else", "ifx", "then", "while", "for", "break", "continue", "return", "struct", "enum" ];
+    keywords :: string.["if", "else", "ifx", "then", "while", "for", "break", "continue", "return", "struct", "enum", "case" ];
     types    :: string.["int", "float", "u8", "u16", "u32", "u64", "s8", "s16", "s32", "s64", "bool", "string" ];
 
     for * fragment.tokens array_reset(it);
@@ -808,17 +816,36 @@ UNFINISHED_tokenise :: (fragment: *Fragment)
         }
     }
 
-    // Check if fragment is a procedure and set name
-    fragment.procedure_name = "";
-    if fragment.tokens.count == 0 return;
-    if fragment.tokens[0].count < 6 return;
-    if fragment.tokens[0][0].type != .IDENTIFIER return;
-    if fragment.tokens[0][1].value != " " return;
-    if fragment.tokens[0][2].value != ":" return;
-    if fragment.tokens[0][3].value != ":" return;
-    if fragment.tokens[0][4].value != " " return;
-    if fragment.tokens[0][5].value != "(" return;
-    fragment.procedure_name = fragment.tokens[0][0].value;
+    calculate_fragment_type :: (using frag: *Fragment) -> Fragment_Type {
+        if tokens.count == 0 return .UNKNOWN;
+        if tokens[0].count < 6 return .UNKNOWN;
+        if tokens[0][0].type != .IDENTIFIER return .UNKNOWN;
+        if tokens[0][1].value != " " return .UNKNOWN;
+        if tokens[0][2].value != ":" return .UNKNOWN;
+        if tokens[0][3].value != ":" return .UNKNOWN;
+        if tokens[0][4].value != " " return .UNKNOWN;
+        if tokens[0][5].value == "(" return .PROCEDURE;
+        if tokens[0][5].value == "struct" return .STRUCT;
+        if tokens[0][5].value == "enum" return .ENUM;
+        return .UNKNOWN;
+    }
+
+    // Determine type of fragment
+    fragment.type = calculate_fragment_type(fragment);
+    if #complete fragment.type == {
+        case .PROCEDURE;
+            fragment.identifier = fragment.tokens[0][0].value;
+            fragment.colour     = .{0.3, 0.2, 0.2, 1};;
+        case .STRUCT;
+            fragment.identifier = fragment.tokens[0][0].value;
+            fragment.colour     = .{0.2, 0.3, 0.2, 1};;
+        case .ENUM;
+            fragment.identifier = fragment.tokens[0][0].value;
+            fragment.colour     = .{0.2, 0.2, 0.3, 1};;
+        case .UNKNOWN;
+            fragment.identifier = "";
+            fragment.colour     = .{0.2, 0.2, 0.2, 1};;
+    }
 }
 
 hex_to_vector4 :: (hex: s32) -> Vector4
